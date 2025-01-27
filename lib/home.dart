@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/NavigationBars/home_page.dart';
-import 'package:graduation_project/NavigationBars/manage_page.dart';
-import 'package:graduation_project/NavigationBars/medications_page.dart';
-import 'package:graduation_project/NavigationBars/refills_page.dart';
+import 'package:graduation_project/NavigationBar/home_page.dart';
+import 'package:graduation_project/NavigationBar/manage_page.dart';
+import 'package:graduation_project/NavigationBar/medications_page.dart';
+import 'package:graduation_project/NavigationBar/refills_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
