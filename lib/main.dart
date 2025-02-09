@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
       home: SplashScreen(),
-      // initialRoute: 'home',
+      // initialRoute: 'home',mjjj
       
    
     );
