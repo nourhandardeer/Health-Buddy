@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
       home: SplashScreen(),
-      // initialRoute: 'home',mjjj
+      // initialRoute: 'home',m
       
    
     );
@@ -27,10 +27,3 @@ class MyApp extends StatelessWidget {
 
 
 
- 
-
-
-
-
-
- 
