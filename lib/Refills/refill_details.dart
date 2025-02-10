@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class RefillDetails extends StatefulWidget {
-  const RefillDetails({super.key});
+  const RefillDetails({super.key, required Map<String, String> person});
 
   @override
   _RefillDetailsState createState() => _RefillDetailsState();

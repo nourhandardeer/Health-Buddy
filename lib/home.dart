@@ -18,7 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // List of widgets for the bottom navigation tabs
   final List<Widget> _pages = [
     const HomePage(),
-    const RefillsPage(),
+    RefillsPage(),
     const MedicationsPage(),
     const ManagePage(),
   ];
