@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:graduation_project/pages/splash_screen.dart';
 
 void main() {
-  runApp(
-    DevicePreview(
+  runApp( DevicePreview(
+
       enabled: true, // Set to false in production
       builder: (context) => MyApp(), // Your main app widget
-    ),
-  );
+    ),);
+
 }
 
 class MyApp extends StatelessWidget {
