@@ -68,6 +68,7 @@ flutter:
      - images/photo1.png
      - images/photo2.png
      - images/photo3.png
+     - images/user.png
      - assets/logo.png
   #   - images/a_dot_ham.jpeg
 
