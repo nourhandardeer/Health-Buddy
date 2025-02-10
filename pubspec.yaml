@@ -69,6 +69,7 @@ flutter:
      - images/photo2.png
      - images/photo3.png
      - images/drugs.png
+     - images/syringe.png
      - images/user.png
      - assets/logo.png
   #   - images/a_dot_ham.jpeg
