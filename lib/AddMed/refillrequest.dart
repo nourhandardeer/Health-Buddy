@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/NavigationBar/refills_page.dart';
+import 'package:graduation_project/home.dart'; // Import HomePage
 
 class RefillRequest extends StatefulWidget {
   final String reminderTime;
@@ -66,7 +66,7 @@ class _RefillRequestState extends State<RefillRequest> {
                       setState(() {
                         isReminderOn = value;
                       });
-                    },
+                    }, // Only update state, no navigation
                     activeColor: Colors.green,
                   ),
                 ],
@@ -97,15 +97,12 @@ class _RefillRequestState extends State<RefillRequest> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to RefillsPage instead of using pushAndRemoveUntil
-                  Navigator.push(
+                  // Always go to HomeScreen
+                  Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const RefillsPage(), // Ensure RefillsPage is correctly imported
-                    ),
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
                   );
                 },
-
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   padding: const EdgeInsets.symmetric(vertical: 16),
