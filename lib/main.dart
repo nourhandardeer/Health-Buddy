@@ -4,9 +4,10 @@ import 'package:graduation_project/pages/splash_screen.dart';
 
 void main() {
   runApp(  DevicePreview(
-      enabled: true, 
-      builder: (context) => MyApp(), 
+      enabled: true, // Set to false in production
+      builder: (context) => MyApp(), // Your main app widget
     ),);
+
 }
 
 class MyApp extends StatelessWidget {
@@ -18,12 +19,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
       home: SplashScreen(),
-      
+      // initialRoute: 'home',m
       
    
     );
   }
 }
-
-
-

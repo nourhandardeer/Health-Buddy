@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:graduation_project/home.dart'; // Import HomeScreen
 
 class RefillDetails extends StatefulWidget {
-  final Map<String, String> person; // Accepts medication details
-
-  const RefillDetails({super.key, required this.person});
+  const RefillDetails({super.key});
 
   @override
   _RefillDetailsState createState() => _RefillDetailsState();

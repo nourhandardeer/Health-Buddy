@@ -3,6 +3,8 @@ import 'package:graduation_project/NavigationBar/home_page.dart';
 import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:graduation_project/NavigationBar/medications_page.dart';
 import 'package:graduation_project/NavigationBar/refills_page.dart';
+import 'package:graduation_project/pages/profile_page.dart';
+import 'package:graduation_project/pages/settings_page.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -34,10 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
         leading: IconButton(
           icon: const Icon(Icons.account_circle, size: 40),
           onPressed: () {
-            // Handle profile button action
+            Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
           },
         ),
-        title: const Text('username', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        title: const Text('Mohamed Ahmed', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications),
@@ -46,9 +48,9 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.settings),
             onPressed: () {
-              // Handle add action
+              Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage()));
             },
           ),
         ],
