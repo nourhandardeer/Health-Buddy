@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/Refills/refill.dart';
+import 'package:graduation_project/NavigationBar/refills_page.dart';
 
 class RefillRequest extends StatefulWidget {
   final String reminderTime;
@@ -97,15 +97,15 @@ class _RefillRequestState extends State<RefillRequest> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to Refill Page
-                  Navigator.pushAndRemoveUntil(
+                  // Navigate to RefillsPage instead of using pushAndRemoveUntil
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => RefillPage(),
+                      builder: (context) => const RefillsPage(), // Ensure RefillsPage is correctly imported
                     ),
-                    (Route<dynamic> route) => false, // Clears the stack, so it goes directly to the new page
                   );
                 },
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   padding: const EdgeInsets.symmetric(vertical: 16),

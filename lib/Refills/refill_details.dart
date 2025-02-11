@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:graduation_project/home.dart';
 
 class RefillDetails extends StatefulWidget {
   const RefillDetails({super.key, required Map<String, String> person});
@@ -224,7 +225,14 @@ class _RefillDetailsState extends State<RefillDetails> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Logic to save the settings
+                  // Navigate to Refill Page
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HomeScreen(),
+                    ),
+                    (Route<dynamic> route) => false, // Clears the stack, so it goes directly to the new page
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey[300],
