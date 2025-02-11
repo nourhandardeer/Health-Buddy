@@ -7,12 +7,13 @@ class TimesPage extends StatefulWidget {
 }
 
 class _TimesPageState extends State<TimesPage> {
-  String? selectedFrequency; 
+  String? selectedFrequency;
+  final Map<String, String> customDetails = {};
 
   final List<String> commonFrequencies = [
     "Once a day",
     "Twice a day",
-  ]; 
+  ];
 
   final List<String> additionalFrequencies = [
     "specific days of the week",
@@ -20,9 +21,46 @@ class _TimesPageState extends State<TimesPage> {
     "Every x weeks",
     "Every x months",
     "on demand"
-  ]; // Additional frequency options
+  ];
 
-  bool showMoreOptions = false; // Controls visibility of additional options
+  bool showMoreOptions = false;
+
+  void _askForDetails(String frequency) {
+    TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Enter details for $frequency"),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: "Enter details (e.g., every 3 days)"
+            ),
+            keyboardType: TextInputType.text,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  customDetails[frequency] = controller.text;
+                  selectedFrequency = "$frequency - ${controller.text}";
+                });
+                Navigator.pop(context);
+              },
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,15 +121,26 @@ class _TimesPageState extends State<TimesPage> {
                     ...additionalFrequencies.map((frequency) {
                       return RadioListTile<String>(
                         title: Text(
-                          frequency,
+                          customDetails.containsKey(frequency)
+                              ? "$frequency - ${customDetails[frequency]}"
+                              : frequency,
                           style: const TextStyle(fontSize: 16),
                         ),
-                        value: frequency,
+                        value: customDetails.containsKey(frequency)
+                            ? "$frequency - ${customDetails[frequency]}"
+                            : frequency,
                         groupValue: selectedFrequency,
                         onChanged: (value) {
-                          setState(() {
-                            selectedFrequency = value;
-                          });
+                          if (value == "specific days of the week" ||
+                              value == "Every x days" ||
+                              value == "Every x weeks" ||
+                              value == "Every x months") {
+                            _askForDetails(value!);
+                          } else {
+                            setState(() {
+                              selectedFrequency = value;
+                            });
+                          }
                         },
                       );
                     }).toList(),
@@ -124,7 +173,6 @@ class _TimesPageState extends State<TimesPage> {
               );
             }
           },
-
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,
             padding: const EdgeInsets.symmetric(vertical: 15),
@@ -141,8 +189,3 @@ class _TimesPageState extends State<TimesPage> {
     );
   }
 }
-// "specific days of the week",
-//     "Every x days",
-//     "Every x weeks",
-//     "Every x months",
-//     "on demand"

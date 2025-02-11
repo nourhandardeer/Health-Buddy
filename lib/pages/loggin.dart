@@ -17,7 +17,7 @@ class LoginScreen extends StatelessWidget {
           children: [
             Text('Welcome back',style: TextStyle(fontSize: 29,color: Colors.blue.shade900),),
             Text('Login',style: TextStyle(fontSize: 19,color: Colors.blue.shade900),),
-            Image.asset('assets/logo.png', width: 200, height: 200), // Logo
+            Image.asset('images/logo.png', width: 200, height: 200), // Logo
        Padding(
   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Add padding
   child: TextField(

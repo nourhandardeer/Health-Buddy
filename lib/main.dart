@@ -1,11 +1,11 @@
-import 'package:device_preview/device_preview.dart';
+ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:graduation_project/pages/splash_screen.dart';
 
 void main() {
   runApp(  DevicePreview(
-      enabled: true, // Set to false in production
-      builder: (context) => MyApp(), // Your main app widget
+      enabled: true, 
+      builder: (context) => MyApp(), 
     ),);
 }
 
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
       home: SplashScreen(),
-      // initialRoute: 'home',m
+      
       
    
     );

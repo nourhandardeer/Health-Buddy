@@ -21,7 +21,7 @@ class SignUpScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 29, color: Colors.blue.shade900)),
             Text('Sign Up',
                 style: TextStyle(fontSize: 19, color: Colors.blue.shade900)),
-            Image.asset('assets/logo.png', width: 200, height: 200), // Logo
+            Image.asset('images/logo.png', width: 200, height: 200), // Logo
             
             // First Name Field
             Padding(

@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         child: AnimatedOpacity(
           duration: Duration(seconds: 2), // Smooth fade-in effect
           opacity: _opacity,
-          child: Image.asset('assets/logo.png', width: 200,height: 200,), // Logo image
+          child: Image.asset('images/logo.png', width: 200,height: 200,), // Logo image
         ),
       ),
     );
