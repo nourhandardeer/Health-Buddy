@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:graduation_project/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/auth.dart';
+import 'package:graduation_project/pages/sign_up.dart';
 
 class LoginScreen extends StatefulWidget {
   LoginScreen({super.key});
@@ -17,12 +18,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     try {
-      // Attempt to sign in with Firebase
       await Auth().signInWithEmailAndPassword(
         email: emailController.text,
         password: passwordController.text,
       );
-      // If successful, navigate to the HomeScreen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
@@ -34,11 +33,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _resetPassword() async {
+    if (emailController.text.isNotEmpty) {
+      try {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: emailController.text);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Password reset link sent to your email")),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${e.toString()}")),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please enter your email to reset password")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: SingleChildScrollView( // Use scroll view to handle small screens
+        child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -55,33 +73,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    labelStyle:
-                        const TextStyle(fontSize: 18, color: Colors.black),
+                    labelStyle: TextStyle(fontSize: 18, color: Colors.black),
                     hintText: 'Please enter your email address',
-                    hintStyle:
-                        const TextStyle(fontSize: 16, color: Colors.grey),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Colors.red, width: 2),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.grey, width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Colors.blue, width: 2.5),
                     ),
                     filled: true,
                     fillColor: Colors.white,
                   ),
-                  style:
-                      const TextStyle(fontSize: 18, color: Colors.black),
                 ),
               ),
-              SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: TextField(
@@ -89,30 +90,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    labelStyle:
-                        const TextStyle(fontSize: 18, color: Colors.black),
+                    labelStyle: TextStyle(fontSize: 18, color: Colors.black),
                     hintText: 'Enter your Password',
-                    hintStyle:
-                        const TextStyle(fontSize: 16, color: Colors.grey),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Colors.grey, width: 2),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.grey, width: 1.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: Colors.blue, width: 2.5),
                     ),
                     filled: true,
                     fillColor: Colors.white,
                   ),
-                  style:
-                      const TextStyle(fontSize: 18, color: Colors.black),
                 ),
               ),
               if (errorMessage != null && errorMessage!.isNotEmpty)
@@ -123,15 +108,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
-              SizedBox(height: 10),
+              TextButton(
+                onPressed: _resetPassword,
+                child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade900)),
+              ),
               ElevatedButton(
                 onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade900,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 150, vertical: 5),
-                  textStyle:
-                      const TextStyle(fontSize: 15, color: Colors.white),
+                  padding: const EdgeInsets.symmetric(horizontal: 150, vertical: 5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -140,7 +125,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   "Login",
                   style: TextStyle(color: Colors.white),
                 ),
-              )
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                  );
+                },
+                child: Text("Don't have an account? Sign up", style: TextStyle(color: Colors.blue.shade900)),
+              ),
             ],
           ),
         ),
