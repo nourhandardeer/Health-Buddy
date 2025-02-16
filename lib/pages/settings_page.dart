@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:graduation_project/pages/loggin.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -69,12 +71,18 @@ class SettingsPage extends StatelessWidget {
 
           // Logout Button
           ListTile(
-            leading: Icon(Icons.logout, color: Colors.red),
-            title: Text('Logout'),
-            onTap: () {
-              // Logout function
-            },
-          ),
+  leading: Icon(Icons.logout, color: Colors.red),
+  title: Text('Logout'),
+  onTap: () async {
+    // Sign out from Firebase
+    await FirebaseAuth.instance.signOut();
+    // Navigate to the login screen after signing out
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+    );
+  },
+),
         ],
       ),
     );
