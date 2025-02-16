@@ -19,23 +19,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? errorMessage = '';
 
   Future<void> _register() async {
-    try {
-      // Call Firebase's createUserWithEmailAndPassword via your Auth class.
-      await Auth().createUserWithEmailAndPassword(
-        email: emailController.text,
-        password: passwordController.text,
-      );
-      // Optionally, you can store additional user details (first & last name) in Firestore.
+  try {
+    // Call the modified createUserWithEmailAndPassword with extra fields.
+    String? errorMsg = await Auth().createUserWithEmailAndPassword(
+      firstName: firstNameController.text.trim(),
+      lastName: lastNameController.text.trim(),
+      email: emailController.text.trim(),
+      password: passwordController.text.trim(),
+    );
+
+    if (errorMsg == null) {
+      // Registration successful, navigate to the home screen.
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
-    } on FirebaseAuthException catch (e) {
+    } else {
       setState(() {
-        errorMessage = e.message;
+        errorMessage = errorMsg;
       });
     }
+  } catch (e) {
+    setState(() {
+      errorMessage = "An unexpected error occurred. Please try again.";
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {
