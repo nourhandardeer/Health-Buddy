@@ -1,34 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:graduation_project/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/auth.dart';
+import 'package:graduation_project/pages/sign_up.dart';
 
-class LoginRegisterPage extends StatefulWidget {
-  const LoginRegisterPage({super.key});
+class LoginScreen extends StatefulWidget {
+  LoginScreen({super.key});
 
   @override
-  State<LoginRegisterPage> createState() => _LoginRegisterPageState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _LoginRegisterPageState extends State<LoginRegisterPage> {
-  String? errorMessage = "";
-  bool isLogin = true; // Toggle between login and register modes
-
-  // Controllers for login fields
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  String? errorMessage = '';
 
-  // Additional controllers for registration fields
-  final TextEditingController firstNameController = TextEditingController();
-  final TextEditingController lastNameController = TextEditingController();
-
-  /// Sign in existing user
-  Future<void> signInWithEmailAndPassword() async {
+  Future<void> _login() async {
     try {
       await Auth().signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+        email: emailController.text,
+        password: passwordController.text,
       );
-      // On successful login, you might navigate to your home page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
     } on FirebaseAuthException catch (e) {
       setState(() {
         errorMessage = e.message;
@@ -36,92 +33,106 @@ class _LoginRegisterPageState extends State<LoginRegisterPage> {
     }
   }
 
-  /// Register new user and save extra details in Firestore
-  Future<void> createUserWithEmailAndPassword() async {
-    try {
-      String? errorMsg = await Auth().createUserWithEmailAndPassword(
-        firstName: firstNameController.text.trim(),
-        lastName: lastNameController.text.trim(),
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
-      if (errorMsg != null) {
-        setState(() {
-          errorMessage = errorMsg;
-        });
-      } else {
-        // On successful registration, you might navigate to your home page
+  Future<void> _resetPassword() async {
+    if (emailController.text.isNotEmpty) {
+      try {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: emailController.text);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Password reset link sent to your email")),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${e.toString()}")),
+        );
       }
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        errorMessage = e.message;
-      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please enter your email to reset password")),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isLogin ? 'Login' : 'Register'),
-      ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Show extra fields only in registration mode
-              if (!isLogin) ...[
-                TextField(
-                  controller: firstNameController,
-                  decoration: const InputDecoration(labelText: 'First Name'),
+              Text('Welcome back',
+                  style: TextStyle(fontSize: 29, color: Colors.blue.shade900)),
+              Text('Login',
+                  style: TextStyle(fontSize: 19, color: Colors.blue.shade900)),
+              Image.asset('images/logo.png', width: 200, height: 200),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: TextStyle(fontSize: 18, color: Colors.black),
+                    hintText: 'Please enter your email address',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
                 ),
-                const SizedBox(height: 8.0),
-                TextField(
-                  controller: lastNameController,
-                  decoration: const InputDecoration(labelText: 'Last Name'),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: TextStyle(fontSize: 18, color: Colors.black),
+                    hintText: 'Enter your Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
                 ),
-                const SizedBox(height: 8.0),
-              ],
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
               ),
-              const SizedBox(height: 8.0),
-              TextField(
-                controller: passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-              const SizedBox(height: 16.0),
-              // Display error message if exists
               if (errorMessage != null && errorMessage!.isNotEmpty)
-                Text(
-                  errorMessage!,
-                  style: const TextStyle(color: Colors.red),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
-              const SizedBox(height: 16.0),
+              TextButton(onPressed: _resetPassword,
+                child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade900)),
+              ),
               ElevatedButton(
-                onPressed: () {
-                  if (isLogin) {
-                    signInWithEmailAndPassword();
-                  } else {
-                    createUserWithEmailAndPassword();
-                  }
-                },
-                child: Text(isLogin ? 'Login' : 'Register'),
+                onPressed: _login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade900,
+                  padding: const EdgeInsets.symmetric(horizontal: 150, vertical: 5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  "Login",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
               TextButton(
                 onPressed: () {
-                  setState(() {
-                    isLogin = !isLogin;
-                    errorMessage = "";
-                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                  );
                 },
-                child: Text(isLogin
-                    ? "Don't have an account? Register"
-                    : "Already have an account? Login"),
+                child: Text("Don't have an account? Sign up", style: TextStyle(color: Colors.blue.shade900)),
               ),
             ],
           ),
