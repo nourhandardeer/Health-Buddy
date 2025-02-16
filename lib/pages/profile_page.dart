@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -8,6 +12,44 @@ class ProfilePage extends StatelessWidget {
     {"name": "Dr. Khaled", "phone": "+20 117 654 321", "relation": "Family Doctor"},
     {"name": "Kareem Mohamed", "phone": "+20 155 123 456", "relation": "Son"},
   ];
+
+  Widget _buildUserName() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Text(
+        'Guest',
+        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      );
+    }
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Text(
+            'Loading...',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          );
+        } else if (snapshot.hasError) {
+          return const Text(
+            'Error',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          );
+        } else if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Text(
+            'User',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          );
+        } else {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final fullName = "${data['firstName']} ${data['lastName']}";
+          return Text(
+            fullName,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          );
+        }
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,10 +72,7 @@ class ProfilePage extends StatelessWidget {
             SizedBox(height: 16),
 
             // Name
-            Text(
-              'Mohamed Ahmed',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            _buildUserName(),
             SizedBox(height: 4),
 
             // Age & Health Status
