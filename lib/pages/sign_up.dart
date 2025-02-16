@@ -1,188 +1,213 @@
 import 'package:flutter/material.dart';
 import 'package:graduation_project/home.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:graduation_project/auth.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({Key? key}) : super(key: key);
+
+  @override
+  _SignUpScreenState createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  SignUpScreen({super.key});
+  String? errorMessage = '';
+
+  Future<void> _register() async {
+    try {
+      // Call Firebase's createUserWithEmailAndPassword via your Auth class.
+      await Auth().createUserWithEmailAndPassword(
+        email: emailController.text,
+        password: passwordController.text,
+      );
+      // Optionally, you can store additional user details (first & last name) in Firestore.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        errorMessage = e.message;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // Center vertically
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text('Create an Account',
-                style: TextStyle(fontSize: 29, color: Colors.blue.shade900)),
-            Text('Sign Up',
-                style: TextStyle(fontSize: 19, color: Colors.blue.shade900)),
-            Image.asset('images/logo.png', width: 200, height: 200), // Logo
-            
-            // First Name Field
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Add padding
-              child: TextField(
-                controller: firstNameController,
-                decoration: InputDecoration(
-                  labelText: 'First Name',
-                  labelStyle: TextStyle(fontSize: 18, color: Colors.black),
-                  hintText: 'Enter your first name',
-                  hintStyle: TextStyle(fontSize: 16, color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey, width: 2),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue, width: 2.5),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                style: TextStyle(fontSize: 18, color: Colors.black),
-              ),
-            ),
+        child: SingleChildScrollView( // Ensure the view scrolls on smaller screens.
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Create an Account',
+                  style: TextStyle(fontSize: 29, color: Colors.blue.shade900)),
+              Text('Sign Up',
+                  style: TextStyle(fontSize: 19, color: Colors.blue.shade900)),
+              Image.asset('images/logo.png', width: 200, height: 200), // Logo
 
-            // Last Name Field
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Add padding
-              child: TextField(
-                controller: lastNameController,
-                decoration: InputDecoration(
-                  labelText: 'Last Name',
-                  labelStyle: TextStyle(fontSize: 18, color: Colors.black),
-                  hintText: 'Enter your last name',
-                  hintStyle: TextStyle(fontSize: 16, color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey, width: 2),
+              // First Name Field
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: firstNameController,
+                  decoration: InputDecoration(
+                    labelText: 'First Name',
+                    labelStyle: const TextStyle(fontSize: 18, color: Colors.black),
+                    hintText: 'Enter your first name',
+                    hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.blue, width: 2.5),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue, width: 2.5),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                style: TextStyle(fontSize: 18, color: Colors.black),
-              ),
-            ),
-
-            // Email Field
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Add padding
-              child: TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  labelStyle: TextStyle(fontSize: 18, color: Colors.black),
-                  hintText: 'Please enter your email address',
-                  hintStyle: TextStyle(fontSize: 16, color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.red, width: 2),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue, width: 2.5),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                style: TextStyle(fontSize: 18, color: Colors.black),
-              ),
-            ),
-
-            // Password Field
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Add padding
-              child: TextField(
-                controller: passwordController,
-                obscureText: true, // Hide password input
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: TextStyle(fontSize: 18, color: Colors.black38),
-                  hintText: 'Enter your Password',
-                  hintStyle: TextStyle(fontSize: 16, color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey, width: 2),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.blue, width: 2.5),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                style: TextStyle(fontSize: 18, color: Colors.black),
-              ),
-            ),
-
-            SizedBox(height: 10),
-
-            // Sign Up Button
-            ElevatedButton(
-              onPressed: () {
-                String firstName = firstNameController.text;
-                String lastName = lastNameController.text;
-                String email = emailController.text;
-                String password = passwordController.text;
-                
-                print('First Name: $firstName');
-                print('Last Name: $lastName');
-                print('Email: $email');
-                print('Password: $password');
-                
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()));
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade900,
-                padding: EdgeInsets.symmetric(horizontal: 120, vertical: 10),
-                textStyle: TextStyle(fontSize: 15, color: Colors.white),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  style: const TextStyle(fontSize: 18, color: Colors.black),
                 ),
               ),
-              child: Text("Sign Up", style: TextStyle(color: Colors.white)),
-            ),
 
-            SizedBox(height: 10),
-
-            // Navigate to Login
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Go back to LoginScreen
-              },
-              child: Text(
-                "Already have an account? Login",
-                style: TextStyle(fontSize: 16, color: Colors.blue),
+              // Last Name Field
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: lastNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Last Name',
+                    labelStyle: const TextStyle(fontSize: 18, color: Colors.black),
+                    hintText: 'Enter your last name',
+                    hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.blue, width: 2.5),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  style: const TextStyle(fontSize: 18, color: Colors.black),
+                ),
               ),
-            ),
-          ],
+
+              // Email Field
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: const TextStyle(fontSize: 18, color: Colors.black),
+                    hintText: 'Please enter your email address',
+                    hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.red, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.blue, width: 2.5),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  style: const TextStyle(fontSize: 18, color: Colors.black),
+                ),
+              ),
+
+              // Password Field
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: const TextStyle(fontSize: 18, color: Colors.black38),
+                    hintText: 'Enter your Password',
+                    hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.blue, width: 2.5),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  style: const TextStyle(fontSize: 18, color: Colors.black),
+                ),
+              ),
+
+              // Display error message if registration fails.
+              if (errorMessage != null && errorMessage!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              const SizedBox(height: 10),
+
+              // Sign Up Button
+              ElevatedButton(
+                onPressed: _register,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade900,
+                  padding: const EdgeInsets.symmetric(horizontal: 120, vertical: 10),
+                  textStyle: const TextStyle(fontSize: 15, color: Colors.white),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text("Sign Up", style: TextStyle(color: Colors.white)),
+              ),
+
+              const SizedBox(height: 10),
+
+              // Navigate to Login Screen
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Return to the previous screen, which is the LoginScreen.
+                },
+                child: const Text(
+                  "Already have an account? Login",
+                  style: TextStyle(fontSize: 16, color: Colors.blue),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

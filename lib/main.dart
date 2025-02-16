@@ -1,13 +1,32 @@
- import 'package:device_preview/device_preview.dart';
+import 'package:device_preview/device_preview.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:graduation_project/pages/splash_screen.dart';
 
-void main() {
-  runApp(  DevicePreview(
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    await Firebase.initializeApp(
+        options: FirebaseOptions(
+            apiKey: "AIzaSyBXfH6mUgdeFBSy3qlPHoSAA2eJGv3sELo",
+            authDomain: "graduationproject-c5dba.firebaseapp.com",
+            projectId: "graduationproject-c5dba",
+            storageBucket: "graduationproject-c5dba.firebasestorage.app",
+            messagingSenderId: "132666813360",
+            appId: "1:132666813360:web:00b2bbc028c381d9360475",
+            measurementId: "G-BBCMQ12SM8"));
+  } else {
+    await Firebase.initializeApp();
+  }
+
+  runApp(
+    DevicePreview(
       enabled: true, // Set to false in production
       builder: (context) => MyApp(), // Your main app widget
-    ),);
-
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -20,8 +39,6 @@ class MyApp extends StatelessWidget {
       builder: DevicePreview.appBuilder,
       home: SplashScreen(),
       // initialRoute: 'home',m
-      
-   
     );
   }
 }
