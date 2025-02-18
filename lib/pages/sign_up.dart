@@ -34,7 +34,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         email: email,
         password: password,
       );
-
       if (errorMsg == null) {
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
@@ -45,6 +44,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             'email': email,
             'createdAt': FieldValue.serverTimestamp(),
           });
+
+          // **Check if this email is listed as an emergency contact**
+          await checkAndLinkEmergencyContact(user);
 
           // Navigate to Profile Setup Page
           _onSignupSuccess(user.uid, firstName, lastName);
@@ -77,6 +79,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
     ),
   );
 }
+
+  Future<void> checkAndLinkEmergencyContact(User user) async {
+    try {
+      DocumentSnapshot contactDoc = await FirebaseFirestore.instance
+          .collection('emergencyContacts')
+          .doc(user.email) // Check if the signed-up email exists
+          .get();
+
+      if (contactDoc.exists) {
+        String patientId = contactDoc['linkedPatientId'];
+
+        // Update the emergency contact's Firestore document to store this link
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid) // The newly signed-up user's UID
+            .set({
+          'linkedPatientId': patientId, // Link this emergency contact to the patient
+        }, SetOptions(merge: true));
+
+        print("Emergency contact linked to patient successfully.");
+      }
+    } catch (e) {
+      print("Error checking emergency contact linkage: $e");
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {

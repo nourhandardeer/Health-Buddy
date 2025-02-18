@@ -5,6 +5,9 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:graduation_project/home.dart';
 
+import '../EmergencyContactHelper.dart';
+
+
 class ProfileSetupPage extends StatefulWidget {
   final String userId;
   final String firstName;
@@ -97,55 +100,85 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     });
   }
 
+  // void _addEmergencyContact() {
+  //   // showDialog(
+  //   //   context: context,
+  //   //   builder: (context) {
+  //   //     TextEditingController nameController = TextEditingController();
+  //   //     TextEditingController phoneController = TextEditingController();
+  //   //     TextEditingController relationController = TextEditingController();
+  //   //     return AlertDialog(
+  //   //       title: Text("Add Emergency Contact"),
+  //   //       content: Column(
+  //   //         mainAxisSize: MainAxisSize.min,
+  //   //         children: [
+  //   //           TextField(
+  //   //               controller: nameController,
+  //   //               decoration: InputDecoration(labelText: "Name")),
+  //   //           TextField(
+  //   //               controller: phoneController,
+  //   //               decoration: InputDecoration(labelText: "Phone"),
+  //   //               keyboardType: TextInputType.phone),
+  //   //           TextField(
+  //   //               controller: relationController,
+  //   //               decoration: InputDecoration(labelText: "Relation")),
+  //   //         ],
+  //   //       ),
+  //   //       actions: [
+  //   //         TextButton(
+  //   //           onPressed: () {
+  //   //             Navigator.pop(context);
+  //   //           },
+  //   //           child: Text("Cancel"),
+  //   //         ),
+  //   //         TextButton(
+  //   //           onPressed: () {
+  //   //             setState(() {
+  //   //               emergencyContacts.add({
+  //   //                 "name": nameController.text,
+  //   //                 "phone": phoneController.text,
+  //   //                 "relation": relationController.text,
+  //   //               });
+  //   //             });
+  //   //             Navigator.pop(context);
+  //   //           },
+  //   //           child: Text("Add"),
+  //   //         ),
+  //   //       ],
+  //   //     );
+  //   //   },
+  //   // );
+  //   EmergencyContactHelper.addEmergencyContact(context, (newContact) async {
+  //     setState(() {
+  //       emergencyContacts.add(newContact);
+  //     });
+  //   });
+  // }
   void _addEmergencyContact() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        TextEditingController nameController = TextEditingController();
-        TextEditingController phoneController = TextEditingController();
-        TextEditingController relationController = TextEditingController();
-        return AlertDialog(
-          title: Text("Add Emergency Contact"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(labelText: "Name")),
-              TextField(
-                  controller: phoneController,
-                  decoration: InputDecoration(labelText: "Phone"),
-                  keyboardType: TextInputType.phone),
-              TextField(
-                  controller: relationController,
-                  decoration: InputDecoration(labelText: "Relation")),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  emergencyContacts.add({
-                    "name": nameController.text,
-                    "phone": phoneController.text,
-                    "relation": relationController.text,
-                  });
-                });
-                Navigator.pop(context);
-              },
-              child: Text("Add"),
-            ),
-          ],
-        );
-      },
-    );
+    EmergencyContactHelper.addEmergencyContact(context, (newContact) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      try {
+        // Reference to the emergencyContacts subcollection
+        CollectionReference emergencyContactsRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('emergencyContacts');
+
+        await emergencyContactsRef.add(newContact);
+
+        setState(() {
+          emergencyContacts.add(newContact);
+        });
+
+        print("Emergency contact added successfully.");
+      } catch (e) {
+        print("Error adding contact: $e");
+      }
+    });
   }
+
 
   @override
   Widget build(BuildContext context) {
