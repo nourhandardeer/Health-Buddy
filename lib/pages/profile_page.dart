@@ -1,54 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
-  final List<Map<String, String>> emergencyContacts = const [
-    {"name": "Sara ahmed", "phone": "+20 100 567 890", "relation": "Sister"},
-    {"name": "Dr. Khaled", "phone": "+20 117 654 321", "relation": "Family Doctor"},
-    {"name": "Kareem Mohamed", "phone": "+20 155 123 456", "relation": "Son"},
-  ];
+  @override
+  _ProfilePageState createState() => _ProfilePageState();
+}
 
-  Widget _buildUserName() {
+class _ProfilePageState extends State<ProfilePage> {
+  String _fullName = "Loading...";
+  String _profileImageUrl = "images/user.png"; // Default image
+  String _age = "Unknown";
+  String _illnesses = "No illnesses specified";
+  List<Map<String, String>> _emergencyContacts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchUserProfile() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const Text(
-        'Guest',
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-      );
+    if (user == null) return;
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        setState(() {
+          _fullName = "${data['firstName']} ${data['lastName']}";
+          _profileImageUrl = data['profileImage'] ?? "images/user.png";
+          _age = data['age'] ?? "Unknown";
+          _illnesses = data['illnesses'] ?? "No illnesses specified";
+          _emergencyContacts = (data['emergencyContacts'] as List<dynamic>?)
+                  ?.map((contact) => Map<String, String>.from(contact))
+                  .toList() ??
+              [];
+        });
+      }
+    } catch (e) {
+      print("Error fetching profile: $e");
     }
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Text(
-            'Loading...',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          );
-        } else if (snapshot.hasError) {
-          return const Text(
-            'Error',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          );
-        } else if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Text(
-            'User',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          );
-        } else {
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          final fullName = "${data['firstName']} ${data['lastName']}";
-          return Text(
-            fullName,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          );
-        }
-      },
-    );
   }
 
   @override
@@ -66,21 +65,25 @@ class ProfilePage extends StatelessWidget {
             // Profile Picture
             CircleAvatar(
               radius: 60,
-              backgroundImage: AssetImage('images/user.png'),
+              backgroundImage: _profileImageUrl.startsWith('http')
+                  ? NetworkImage(_profileImageUrl)
+                  : AssetImage("images/user.png"),
               backgroundColor: Colors.transparent,
             ),
             SizedBox(height: 16),
 
             // Name
-            _buildUserName(),
+            Text(
+              _fullName,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 4),
 
             // Age & Health Status
             Text(
-              'Age: 78 | Diabetes, Hypertension',
+              'Age: $_age | $_illnesses',
               style: TextStyle(fontSize: 18, color: Colors.grey),
             ),
-            
             SizedBox(height: 16),
 
             // Emergency Contact
@@ -92,32 +95,36 @@ class ProfilePage extends StatelessWidget {
 
             // Emergency Contacts List
             Expanded(
-              child: ListView.builder(
-                itemCount: emergencyContacts.length,
-                itemBuilder: (context, index) {
-                  var contact = emergencyContacts[index];
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              child: _emergencyContacts.isEmpty
+                  ? Text("No emergency contacts available.")
+                  : ListView.builder(
+                      itemCount: _emergencyContacts.length,
+                      itemBuilder: (context, index) {
+                        var contact = _emergencyContacts[index];
+                        return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: ListTile(
+                            leading: Icon(Icons.phone, color: Colors.red),
+                            title: Text(
+                              contact["name"]!,
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                                '${contact["relation"]} - ${contact["phone"]}'),
+                            trailing: IconButton(
+                              icon: Icon(Icons.call, color: Colors.green),
+                              onPressed: () {
+                                // Add phone call functionality here
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    child: ListTile(
-                      leading: Icon(Icons.phone, color: Colors.red),
-                      title: Text(
-                        contact["name"]!,
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text('${contact["relation"]} - ${contact["phone"]}'),
-                      trailing: IconButton(
-                        icon: Icon(Icons.call, color: Colors.green),
-                        onPressed: () {
-                          // Add phone call functionality here
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
             ),
             SizedBox(height: 16),
 
@@ -131,7 +138,10 @@ class ProfilePage extends StatelessWidget {
               ),
               child: Text(
                 'Emergency Alert',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
               ),
             ),
           ],
