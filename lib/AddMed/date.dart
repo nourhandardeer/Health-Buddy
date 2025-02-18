@@ -88,7 +88,7 @@ class _DatePageState extends State<DatePage> {
                         selectedHour = (index ) % 23 == 0 ? 24 : (index ) % 23;
                       });
                     },
-                    children: List<Widget>.generate(23, (int index) => Center(child: Text((index + 1).toString().padLeft(2, '0')))),
+                    children: List<Widget>.generate(23, (int index) => Center(child: Text((index).toString().padLeft(2, '0')))),
                   ),
                 ),
                 const SizedBox(width: 8),

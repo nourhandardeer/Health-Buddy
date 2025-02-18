@@ -17,12 +17,11 @@ class _MedicationsPageState extends State<MedicationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Light background
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        
         backgroundColor: Colors.white,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black), // Black icons
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: _buildMedicationsList(),
       floatingActionButton: FloatingActionButton(
@@ -32,13 +31,12 @@ class _MedicationsPageState extends State<MedicationsPage> {
             MaterialPageRoute(builder: (context) => AddMedicationPage()),
           );
         },
-        backgroundColor: Colors.blue, // Blue for better visibility
+        backgroundColor: Colors.blue,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  /// Fetch & display medications for the logged-in user
   Widget _buildMedicationsList() {
     final user = _auth.currentUser;
     if (user == null) {
@@ -66,7 +64,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
           );
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return _buildEmptyState(); // Show "Add Medications" UI if no data
+          return _buildEmptyState();
         }
 
         var medications = snapshot.data!.docs;
@@ -79,30 +77,27 @@ class _MedicationsPageState extends State<MedicationsPage> {
             var medData = med.data() as Map<String, dynamic>;
 
             return Card(
-              color: Colors.grey[200], // Light grey card
+              color: Colors.grey[200],
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ListTile(
-                leading: const Icon(Icons.medical_services, color: Colors.blue), // Blue icon
+                leading: const Icon(Icons.medical_services, color: Colors.blue),
                 title: Text(
                   medData["name"] ?? "Unknown Medication",
-                  style: const TextStyle(color: Colors.black, fontSize: 18), // Black text
+                  style: const TextStyle(color: Colors.black, fontSize: 18),
                 ),
                 subtitle: Text(
                   "Daily — ${medData['time'] ?? 'N/A'}",
-                  style: TextStyle(color: Colors.grey[700]), 
+                  style: TextStyle(color: Colors.grey[700]),
                 ),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[100], 
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    "${medData["pillsLeft"] ?? 0} ",
-                    style: const TextStyle(color: Colors.black),
-                  ),
-                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MedicationDetailsPage(medData: medData),
+                    ),
+                  );
+                },
               ),
             );
           },
@@ -111,7 +106,6 @@ class _MedicationsPageState extends State<MedicationsPage> {
     );
   }
 
-  /// UI when no medications exist
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -126,29 +120,91 @@ class _MedicationsPageState extends State<MedicationsPage> {
           Text(
             "Add your meds to be reminded on time and\ntrack your health",
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, color: Colors.grey[700]), // Dark grey text
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AddMedicationPage()),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue, // Blue button
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-            ),
-            child: const Text(
-              "Add a med",
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[700]),
           ),
           const SizedBox(height: 20),
         ],
       ),
+    );
+  }
+}
+
+class MedicationDetailsPage extends StatelessWidget {
+  final Map<String, dynamic> medData;
+
+  const MedicationDetailsPage({super.key, required this.medData});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Medication Schedule"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSection("Frequency", "${medData['frequency'] ?? 'Daily, X times a day'}", true),
+            _buildSection("Duration", "${medData['duration'] ?? 'No end date'}", true),
+            _buildReminderSection(),
+            _buildWeekendToggle(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, String value, bool editable) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(color: Colors.grey[700])),
+              Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          if (editable)
+            Icon(Icons.edit, color: Colors.brown),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReminderSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Reminder details", style: TextStyle(color: Colors.grey[700])),
+          ListTile(
+            leading: Icon(Icons.remove_circle, color: Colors.red),
+            title: Text("Time: ${medData['time'] ?? '08:00'}", style: TextStyle(fontSize: 16)),
+            trailing: Text("${medData['pillsLeft'] ?? '1'} pill(s)"),
+          ),
+          TextButton.icon(
+            onPressed: () {},
+            icon: Icon(Icons.add, color: Colors.green),
+            label: Text("Add reminder time"),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeekendToggle() {
+    return ListTile(
+      title: Text("Different times on weekends", style: TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text("Saturday and Sunday"),
+      trailing: Switch(value: false, onChanged: (val) {}),
     );
   }
 }
