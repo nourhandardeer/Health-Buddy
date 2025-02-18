@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/home.dart'; // Import HomePage
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:graduation_project/home.dart'; // Import Home Page
 
 class RefillRequest extends StatefulWidget {
+  final String medicationName;
+  final String selectedUnit;
+  final String selectedFrequency;
   final String reminderTime;
+  final String documentId; // Receive document ID
 
-  const RefillRequest({Key? key, required this.reminderTime}) : super(key: key);
+  const RefillRequest({
+    Key? key,
+    required this.medicationName,
+    required this.selectedUnit,
+    required this.selectedFrequency,
+    required this.reminderTime,
+    required this.documentId, // Pass document ID
+  }) : super(key: key);
 
   @override
   _RefillRequestState createState() => _RefillRequestState();
@@ -13,11 +25,31 @@ class RefillRequest extends StatefulWidget {
 class _RefillRequestState extends State<RefillRequest> {
   bool isReminderOn = false;
   TextEditingController reminderController = TextEditingController(text: "10 pills");
+TextEditingController currentInventory = TextEditingController(text: "10 pills");
+  Future<void> saveRefillReminder() async {
+    try {
+      await FirebaseFirestore.instance.collection('medications').doc(widget.documentId).update({
+        'refillReminder': isReminderOn ? reminderController.text : "No refill reminder",
+      });
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving refill reminder: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Refill Reminder"),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -47,6 +79,8 @@ class _RefillRequestState extends State<RefillRequest> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
+
+            // Toggle Refill Reminder
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -73,36 +107,61 @@ class _RefillRequestState extends State<RefillRequest> {
               ),
             ),
             const SizedBox(height: 20),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Remind me when",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+
+            // Refill Reminder Amount Input
+            if (isReminderOn)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Current inventory",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: currentInventory,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey[300],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                   const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Remind me when remaining",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: reminderController,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey[300],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                   
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: reminderController,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[300],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
+
             const Spacer(),
+
+            // Save Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // Always go to HomeScreen
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  );
-                },
+                onPressed: saveRefillReminder,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   padding: const EdgeInsets.symmetric(vertical: 16),
