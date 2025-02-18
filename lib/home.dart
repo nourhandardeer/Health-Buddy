@@ -33,6 +33,34 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+   Widget _buildTitle() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Text('Guest',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold));
+    }
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Text('Loading...',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold));
+        } else if (snapshot.hasError) {
+          return const Text('Error',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold));
+        } else if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Text('User',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold));
+        } else {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final fullName = "${data['firstName']} ${data['lastName']}";
+          return Text(fullName,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold));
+        }
+      },
+    );
+  }
+
   /// Store completed medications
   Set<String> completedMedications = {};
 
@@ -219,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
           },
         ),
-        centerTitle: true,
+        title: _buildTitle(),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications, color: Colors.black),
