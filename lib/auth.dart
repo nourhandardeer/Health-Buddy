@@ -12,11 +12,13 @@ class Auth {
     required String lastName,
     required String email,
     required String password,
+    required String phone,
   }) async {
     try {
       UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
+
       );
 
       // Save user data to Firestore
@@ -24,6 +26,7 @@ class Auth {
         'firstName': firstName,
         'lastName': lastName,
         'email': email,
+        'phone': phone
       });
 
       return null; // No error, success
@@ -34,7 +37,7 @@ class Auth {
 
   Future<UserCredential> signInWithEmailAndPassword({
     required String email,
-    required String password,
+    required String password, required String phone,
   }) async {
     return await _firebaseAuth.signInWithEmailAndPassword(
       email: email,

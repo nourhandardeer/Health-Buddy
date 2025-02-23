@@ -17,6 +17,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+
 
   String? errorMessage = '';
 
@@ -26,6 +28,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       String lastName = lastNameController.text.trim();
       String email = emailController.text.trim();
       String password = passwordController.text.trim();
+      String phone = phoneController.text.trim();
+
 
       // Firebase Auth - Create User
       String? errorMsg = await Auth().createUserWithEmailAndPassword(
@@ -33,6 +37,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         lastName: lastName,
         email: email,
         password: password,
+        phone: phone,
       );
       if (errorMsg == null) {
         User? user = FirebaseAuth.instance.currentUser;
@@ -42,6 +47,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             'firstName': firstName,
             'lastName': lastName,
             'email': email,
+            'phone': phone,
             'createdAt': FieldValue.serverTimestamp(),
           });
 
@@ -49,7 +55,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           await checkAndLinkEmergencyContact(user);
 
           // Navigate to Profile Setup Page
-          _onSignupSuccess(user.uid, firstName, lastName);
+          _onSignupSuccess(user.uid, firstName, lastName, phone);
         } else {
           setState(() {
             errorMessage = "Signup failed. Please try again.";
@@ -67,7 +73,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  void _onSignupSuccess(String userId, String firstName, String lastName) {
+  void _onSignupSuccess(String userId, String firstName, String lastName, String phone) {
   Navigator.pushReplacement(
     context,
     MaterialPageRoute(
@@ -75,6 +81,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         userId: userId,
         firstName: firstName,
         lastName: lastName,
+        phone: phone ,
       ),
     ),
   );
@@ -84,7 +91,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       DocumentSnapshot contactDoc = await FirebaseFirestore.instance
           .collection('emergencyContacts')
-          .doc(user.email) // Check if the signed-up email exists
+          .doc(user.phoneNumber) // Check if the signed-up email exists
           .get();
 
       if (contactDoc.exists) {
@@ -129,6 +136,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               // Password Field
               _buildTextField(passwordController, 'Password', 'Enter your password', isPassword: true),
+              _buildTextField(phoneController, 'Phone', 'Enter your phone number', ),
+
 
               // Error message
               if (errorMessage != null && errorMessage!.isNotEmpty)

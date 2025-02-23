@@ -14,13 +14,15 @@ class _ProfilePageState extends State<ProfilePage> {
   String _profileImageUrl = "images/user.png"; // Default image
   String _age = "Unknown";
   String _illnesses = "No illnesses specified";
-  String? _linkedPatientName; // Stores the linked patient's name
-  String? _userId; // Stores the logged-in user's ID
+  String? _linkedPatientName;
+  String? _userId;
+  List<Map<String, dynamic>> _emergencyContacts = [];
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
+    _checkIfEmergencyContact();
   }
 
   Future<void> _fetchUserProfile() async {
@@ -42,41 +44,112 @@ class _ProfilePageState extends State<ProfilePage> {
           _age = data['age'] ?? "Unknown";
           _illnesses = data['illnesses'] ?? "No illnesses specified";
         });
-        _checkIfEmergencyContact(user.email!);
+
+        _fetchEmergencyContacts(user.uid);
       }
     } catch (e) {
       print("Error fetching profile: $e");
     }
   }
 
-  Future<void> _checkIfEmergencyContact(String userEmail) async {
+  Future<void> _fetchEmergencyContacts(String userId) async {
     try {
+      QuerySnapshot contactsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('emergencyContacts')
+          .get();
+
+      List<Map<String, dynamic>> contacts = contactsSnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          "name": data["name"] ?? "Unknown",
+          "phone": data["phone"] ?? "No phone",
+          "relation": data["relation"] ?? "No relation",
+        };
+      }).toList();
+
+      setState(() {
+        _emergencyContacts = contacts;
+      });
+    } catch (e) {
+      print("Error fetching emergency contacts: $e");
+    }
+  }
+
+  Future<void> _checkIfEmergencyContact() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) return;
+
+      String? userPhone = userDoc['phone'];
+
+      if (userPhone == null || userPhone.isEmpty) {
+        print("User phone number is missing.");
+        return;
+      }
+
       QuerySnapshot usersSnapshot =
-          await FirebaseFirestore.instance.collection('users').get();
+      await FirebaseFirestore.instance.collection('users').get();
 
       for (var doc in usersSnapshot.docs) {
         String userId = doc.id;
 
-        QuerySnapshot emergencyContactsSnapshot = await FirebaseFirestore
-            .instance
+        QuerySnapshot emergencyContactsSnapshot =
+        await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
             .collection('emergencyContacts')
+            .where('phone', isEqualTo: userPhone)
             .get();
 
-        for (var contactDoc in emergencyContactsSnapshot.docs) {
-          var contactData = contactDoc.data() as Map<String, dynamic>;
-
-          if (contactData['mail'] == userEmail) {
-            setState(() {
-              _linkedPatientName = "${doc['firstName']} ${doc['lastName']}";
-            });
-            return;
-          }
+        if (emergencyContactsSnapshot.docs.isNotEmpty) {
+          setState(() {
+            _linkedPatientName = "${doc['firstName']} ${doc['lastName']}";
+          });
+          return; // Stop searching once found
         }
       }
     } catch (e) {
       print("Error checking emergency contact status: $e");
+    }
+  }
+
+  void _deleteEmergencyContact(Map<String, dynamic> contact) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('emergencyContacts')
+          .where('phone', isEqualTo: contact['phone'])
+          .get();
+
+      for (var doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      await FirebaseFirestore.instance
+          .collection('emergencyContacts')
+          .doc(contact['phone'])
+          .delete();
+
+      setState(() {
+        _emergencyContacts.remove(contact);
+      });
+
+      print("Contact deleted successfully.");
+    } catch (e) {
+      print("Error deleting contact: $e");
     }
   }
 
@@ -135,76 +208,35 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               SizedBox(height: 8),
 
-              // Live updates for emergency contacts
-              _userId == null
-                  ? CircularProgressIndicator()
-                  : Expanded(
-                      child: StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(_userId)
-                            .collection('emergencyContacts')
-                            .snapshots(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return Center(child: CircularProgressIndicator());
-                          }
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return Text("No emergency contacts available.");
-                          }
-
-                          var contacts = snapshot.data!.docs.map((doc) {
-                            return doc.data() as Map<String, dynamic>;
-                          }).toList();
-
-                          return ListView.builder(
-                            itemCount: contacts.length,
-                            itemBuilder: (context, index) {
-                              var contact = contacts[index];
-                              return Card(
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: ListTile(
-                                  leading: Icon(Icons.phone, color: Colors.red),
-                                  title: Text(
-                                    contact["name"],
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  subtitle: Text(
-                                      '${contact["relation"]} - ${contact["phone"]}'),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.call, color: Colors.green),
-                                    onPressed: () {
-                                      // Add phone call functionality here
-                                    },
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
+              Expanded(
+                child: _emergencyContacts.isEmpty
+                    ? Text("No emergency contacts available.")
+                    : ListView.builder(
+                  itemCount: _emergencyContacts.length,
+                  itemBuilder: (context, index) {
+                    var contact = _emergencyContacts[index];
+                    return Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  // SOS Alert Logic
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 32),
-                ),
-                child: Text(
-                  'Emergency Alert',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                      child: ListTile(
+                        leading: Icon(Icons.phone, color: Colors.red),
+                        title: Text(
+                          contact["name"],
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle:
+                        Text('${contact["relation"]} - ${contact["phone"]}'),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () =>
+                              _deleteEmergencyContact(contact),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
