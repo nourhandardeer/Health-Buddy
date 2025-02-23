@@ -143,6 +143,14 @@ class _ProfilePageState extends State<ProfilePage> {
           .doc(contact['phone'])
           .delete();
 
+      QuerySnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('phone', isEqualTo: contact['phone'])
+          .get();
+
+      for (var doc in userSnapshot.docs) {
+        await doc.reference.delete();
+      }
       setState(() {
         _emergencyContacts.remove(contact);
       });
