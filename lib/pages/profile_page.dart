@@ -14,8 +14,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String _profileImageUrl = "images/user.png"; // Default image
   String _age = "Unknown";
   String _illnesses = "No illnesses specified";
-  List<Map<String, String>> _emergencyContacts = [];
   String? _linkedPatientName; // Stores the linked patient's name
+  String? _userId; // Stores the logged-in user's ID
 
   @override
   void initState() {
@@ -36,33 +36,29 @@ class _ProfilePageState extends State<ProfilePage> {
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
         setState(() {
+          _userId = user.uid;
           _fullName = "${data['firstName']} ${data['lastName']}";
           _profileImageUrl = data['profileImage'] ?? "images/user.png";
           _age = data['age'] ?? "Unknown";
           _illnesses = data['illnesses'] ?? "No illnesses specified";
-          _emergencyContacts = (data['emergencyContacts'] as List<dynamic>?)
-              ?.map((contact) => Map<String, String>.from(contact))
-              .toList() ??
-              [];
         });
-        // Check if this user is an emergency contact in any patient’s record
         _checkIfEmergencyContact(user.email!);
       }
     } catch (e) {
       print("Error fetching profile: $e");
     }
   }
+
   Future<void> _checkIfEmergencyContact(String userEmail) async {
     try {
       QuerySnapshot usersSnapshot =
-      await FirebaseFirestore.instance.collection('users').get();
+          await FirebaseFirestore.instance.collection('users').get();
 
       for (var doc in usersSnapshot.docs) {
         String userId = doc.id;
 
-        // Fetch emergency contacts subcollection for this user
-        QuerySnapshot emergencyContactsSnapshot =
-        await FirebaseFirestore.instance
+        QuerySnapshot emergencyContactsSnapshot = await FirebaseFirestore
+            .instance
             .collection('users')
             .doc(userId)
             .collection('emergencyContacts')
@@ -75,7 +71,7 @@ class _ProfilePageState extends State<ProfilePage> {
             setState(() {
               _linkedPatientName = "${doc['firstName']} ${doc['lastName']}";
             });
-            return; // Stop searching once found
+            return;
           }
         }
       }
@@ -97,7 +93,6 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Profile Picture
               CircleAvatar(
                 radius: 60,
                 backgroundImage: _profileImageUrl.startsWith('http')
@@ -106,21 +101,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 backgroundColor: Colors.transparent,
               ),
               SizedBox(height: 16),
-
-              // Name
               Text(
                 _fullName,
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 4),
-
-              // Age & Health Status
               Text(
                 'Age: $_age | $_illnesses',
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
               SizedBox(height: 16),
-              // Emergency Contact Message (if linked)
               if (_linkedPatientName != null)
                 Container(
                   padding: EdgeInsets.all(12),
@@ -139,48 +129,68 @@ class _ProfilePageState extends State<ProfilePage> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              // Emergency Contact
               Text(
                 'Emergency Contacts',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
 
-              // Emergency Contacts List
-              Expanded(
-                child: _emergencyContacts.isEmpty
-                    ? Text("No emergency contacts available.")
-                    : ListView.builder(
-                  itemCount: _emergencyContacts.length,
-                  itemBuilder: (context, index) {
-                    var contact = _emergencyContacts[index];
-                    return Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: ListTile(
-                        leading: Icon(Icons.phone, color: Colors.red),
-                        title: Text(
-                          contact["name"]!,
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                            '${contact["relation"]} - ${contact["phone"]}'),
-                        trailing: IconButton(
-                          icon: Icon(Icons.call, color: Colors.green),
-                          onPressed: () {
-                            // Add phone call functionality here
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(height: 16),
+              // Live updates for emergency contacts
+              _userId == null
+                  ? CircularProgressIndicator()
+                  : Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(_userId)
+                            .collection('emergencyContacts')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(child: CircularProgressIndicator());
+                          }
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return Text("No emergency contacts available.");
+                          }
 
+                          var contacts = snapshot.data!.docs.map((doc) {
+                            return doc.data() as Map<String, dynamic>;
+                          }).toList();
+
+                          return ListView.builder(
+                            itemCount: contacts.length,
+                            itemBuilder: (context, index) {
+                              var contact = contacts[index];
+                              return Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: ListTile(
+                                  leading: Icon(Icons.phone, color: Colors.red),
+                                  title: Text(
+                                    contact["name"],
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                      '${contact["relation"]} - ${contact["phone"]}'),
+                                  trailing: IconButton(
+                                    icon: Icon(Icons.call, color: Colors.green),
+                                    onPressed: () {
+                                      // Add phone call functionality here
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+              SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
                   // SOS Alert Logic

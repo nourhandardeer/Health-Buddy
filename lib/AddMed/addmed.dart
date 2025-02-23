@@ -27,17 +27,7 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
     if (user != null) {
       String uid = user.uid;
 
-      try {
-        await FirebaseFirestore.instance
-          .collection('medications')
-          .doc(uid)
-          .collection('user_medications')
-          .add({
-            'name': medicationController.text,
-            'unit': selectedUnit,
-            'frequency': "2 times a day", // Add user input for frequency
-            'timestamp': FieldValue.serverTimestamp(),
-      });
+      
 
         // Navigate to TimesPage after saving
         Navigator.push(
@@ -45,16 +35,12 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
           MaterialPageRoute(
             builder: (context) => TimesPage(
               medicationName: medicationController.text,
-              selectedUnit: selectedUnit!,
+              selectedUnit: selectedUnit!, userId: uid,
             ),
           ),
         );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving data: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } else {
+      } 
+     else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User not logged in'), backgroundColor: Colors.red),
       );

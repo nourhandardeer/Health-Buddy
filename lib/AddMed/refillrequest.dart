@@ -7,7 +7,8 @@ class RefillRequest extends StatefulWidget {
   final String selectedUnit;
   final String selectedFrequency;
   final String reminderTime;
-  final String documentId; // Receive document ID
+  final String documentId;
+  final String userId; // Receive user ID
 
   const RefillRequest({
     Key? key,
@@ -15,7 +16,8 @@ class RefillRequest extends StatefulWidget {
     required this.selectedUnit,
     required this.selectedFrequency,
     required this.reminderTime,
-    required this.documentId, // Pass document ID
+    required this.documentId,
+    required this.userId, // Pass user ID
   }) : super(key: key);
 
   @override
@@ -25,12 +27,32 @@ class RefillRequest extends StatefulWidget {
 class _RefillRequestState extends State<RefillRequest> {
   bool isReminderOn = false;
   TextEditingController reminderController = TextEditingController(text: "10 pills");
-TextEditingController currentInventory = TextEditingController(text: "10 pills");
+  TextEditingController currentInventory = TextEditingController(text: "10 pills");
+
   Future<void> saveRefillReminder() async {
     try {
-      await FirebaseFirestore.instance.collection('medications').doc(widget.documentId).update({
+
+      print("User ID: ${widget.userId}");
+      print("Document ID: ${widget.documentId}");
+    
+      if (widget.userId.isEmpty || widget.documentId.isEmpty) {
+      throw Exception("User ID or Document ID is empty.");
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('medications')
+          .doc(widget.documentId)
+          .set({
+        'medicationName': widget.medicationName,
+        'selectedUnit': widget.selectedUnit,
+        'selectedFrequency': widget.selectedFrequency,
+        'reminderTime': widget.reminderTime,
         'refillReminder': isReminderOn ? reminderController.text : "No refill reminder",
-      });
+        'currentInventory': isReminderOn ?currentInventory.text : "No refill reminder",
+        
+      }, SetOptions(merge: true));
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -80,7 +102,6 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
             ),
             const SizedBox(height: 20),
 
-            // Toggle Refill Reminder
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -100,7 +121,7 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
                       setState(() {
                         isReminderOn = value;
                       });
-                    }, // Only update state, no navigation
+                    },
                     activeColor: Colors.green,
                   ),
                 ],
@@ -108,7 +129,6 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
             ),
             const SizedBox(height: 20),
 
-            // Refill Reminder Amount Input
             if (isReminderOn)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +152,7 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
                       ),
                     ),
                   ),
-                   const Align(
+                  const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "Remind me when remaining",
@@ -151,13 +171,11 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
                       ),
                     ),
                   ),
-                   
                 ],
               ),
 
             const Spacer(),
 
-            // Save Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

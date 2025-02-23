@@ -15,28 +15,58 @@ class _MedicationsPageState extends State<MedicationsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: AppBar(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: _buildMedicationsList(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => AddMedicationPage()),
-          );
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
+      elevation: 0,
+      iconTheme: const IconThemeData(color: Colors.black),
+      title: const Text("My Medications", style: TextStyle(color: Colors.black)),
+    ),
+    body: Column(
+      children: [
+        Expanded(child: _buildMedicationsList()), // Makes the list take up remaining space
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AddMedicationPage()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              "Add Medication",
+              style: TextStyle(fontSize: 18, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
+
+  /// **Fetch Medications from Firebase**
   Widget _buildMedicationsList() {
     final user = _auth.currentUser;
     if (user == null) {
@@ -50,9 +80,10 @@ class _MedicationsPageState extends State<MedicationsPage> {
 
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
-          .collection('medications')
+          .collection('users')
           .doc(user.uid)
-          .collection('user_medications')
+          .collection('medications')
+          .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -60,7 +91,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
         }
         if (snapshot.hasError) {
           return const Center(
-            child: Text("Error fetching medications", style: TextStyle(color: Colors.black)),
+            child: Text("Error fetching medications", style: TextStyle(color: Colors.red)),
           );
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -83,11 +114,11 @@ class _MedicationsPageState extends State<MedicationsPage> {
               child: ListTile(
                 leading: const Icon(Icons.medical_services, color: Colors.blue),
                 title: Text(
-                  medData["name"] ?? "Unknown Medication",
+                  medData["medicationName"] ?? "Unknown Medication",
                   style: const TextStyle(color: Colors.black, fontSize: 18),
                 ),
                 subtitle: Text(
-                  "Daily — ${medData['time'] ?? 'N/A'}",
+                  "Frequency: ${medData['selectedFrequency'] ?? 'N/A'}\nTime: ${medData['reminderTime'] ?? 'N/A'}",
                   style: TextStyle(color: Colors.grey[700]),
                 ),
                 onTap: () {
@@ -106,6 +137,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
     );
   }
 
+  /// **Empty State UI**
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -129,6 +161,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
   }
 }
 
+/// **Medication Details Page**
 class MedicationDetailsPage extends StatelessWidget {
   final Map<String, dynamic> medData;
 
@@ -138,7 +171,7 @@ class MedicationDetailsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Medication Schedule"),
+        title: const Text("Medication Details"),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -148,10 +181,25 @@ class MedicationDetailsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSection("Frequency", "${medData['frequency'] ?? 'Daily, X times a day'}", true),
-            _buildSection("Duration", "${medData['duration'] ?? 'No end date'}", true),
-            _buildReminderSection(),
-            _buildWeekendToggle(),
+            _buildSection("Medication Name", "${medData['medicationName'] ?? 'Unknown'}", false),
+            _buildSection("Frequency", "${medData['selectedFrequency'] ?? 'Daily'}", false),
+            _buildSection("Time", "${medData['reminderTime'] ?? '08:00'}", false),
+            _buildSection("Unit", "${medData['selectedUnit'] ?? 'Pills'}", false),
+            _buildSection("Pills Left", "${medData['currentInventory'] ?? 'N/A'}", false),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Center(
+                child: Text("Edit Medication", style: TextStyle(fontSize: 18, color: Colors.white)),
+              ),
+            ),
           ],
         ),
       ),
@@ -168,43 +216,13 @@ class MedicationDetailsPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: TextStyle(color: Colors.grey[700])),
-              Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           if (editable)
-            Icon(Icons.edit, color: Colors.brown),
+            const Icon(Icons.edit, color: Colors.brown),
         ],
       ),
-    );
-  }
-
-  Widget _buildReminderSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Reminder details", style: TextStyle(color: Colors.grey[700])),
-          ListTile(
-            leading: Icon(Icons.remove_circle, color: Colors.red),
-            title: Text("Time: ${medData['time'] ?? '08:00'}", style: TextStyle(fontSize: 16)),
-            trailing: Text("${medData['pillsLeft'] ?? '1'} pill(s)"),
-          ),
-          TextButton.icon(
-            onPressed: () {},
-            icon: Icon(Icons.add, color: Colors.green),
-            label: Text("Add reminder time"),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeekendToggle() {
-    return ListTile(
-      title: Text("Different times on weekends", style: TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text("Saturday and Sunday"),
-      trailing: Switch(value: false, onChanged: (val) {}),
     );
   }
 }

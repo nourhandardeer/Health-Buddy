@@ -3,10 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'date.dart';
 
 class TimesPage extends StatefulWidget {
+  final String userId;
   final String medicationName;
   final String selectedUnit;
 
-  TimesPage({required this.medicationName, required this.selectedUnit});
+  TimesPage({required this.userId, required this.medicationName, required this.selectedUnit});
 
   @override
   _TimesPageState createState() => _TimesPageState();
@@ -57,25 +58,36 @@ class _TimesPageState extends State<TimesPage> {
   Future<void> saveFrequency() async {
     if (selectedFrequency != null) {
       try {
-        // Save medication details and get document ID
-        DocumentReference docRef = await FirebaseFirestore.instance.collection('medications').add({
+        // Save medication details under user's subcollection and get document ID
+        DocumentReference docRef = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId)
+            .collection('medications')
+            .add({
           'name': widget.medicationName,
           'unit': widget.selectedUnit,
-          'frequency': selectedFrequency,
           'timestamp': FieldValue.serverTimestamp(),
         });
 
         String docId = docRef.id; // Store document ID
+
+        // Save frequency details inside subcollection "times"
+        await docRef.collection('times').add({
+          'frequency': selectedFrequency,
+          'details': customDetails[selectedFrequency] ?? '',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
 
         if (mounted) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => DatePage(
+                userId: widget.userId,
                 medicationName: widget.medicationName,
                 selectedUnit: widget.selectedUnit,
                 selectedFrequency: selectedFrequency!,
-                documentId: docId, // Pass document ID
+                documentId: docId,
               ),
             ),
           );
@@ -112,15 +124,11 @@ class _TimesPageState extends State<TimesPage> {
                     groupValue: selectedFrequency,
                     onChanged: (value) => setState(() => selectedFrequency = value),
                   )),
-
-                  // Toggle Button to Show More Options
                   ListTile(
                     title: const Text("I need more options", style: TextStyle(color: Colors.blue)),
                     trailing: Icon(showMoreOptions ? Icons.expand_less : Icons.expand_more, color: Colors.blue),
                     onTap: () => setState(() => showMoreOptions = !showMoreOptions),
                   ),
-
-                  // Show Additional Frequencies when Expanded
                   if (showMoreOptions)
                     ...additionalFrequencies.map((frequency) => RadioListTile(
                       title: Text(customDetails[frequency] ?? frequency),

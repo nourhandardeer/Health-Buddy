@@ -8,6 +8,7 @@ class DatePage extends StatefulWidget {
   final String selectedUnit;
   final String selectedFrequency;
   final String documentId; // Receive document ID
+  final String userId;
 
   const DatePage({
     Key? key,
@@ -15,6 +16,7 @@ class DatePage extends StatefulWidget {
     required this.selectedUnit,
     required this.selectedFrequency,
     required this.documentId,
+    required this.userId,
   }) : super(key: key);
 
   @override
@@ -24,15 +26,22 @@ class DatePage extends StatefulWidget {
 class _DatePageState extends State<DatePage> {
   int selectedHour = 8;
   int selectedMinute = 0;
-  bool isAM = true;
 
   Future<void> saveReminderTime() async {
-    String formattedTime = "${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')} ${isAM ? 'AM' : 'PM'}";
+    String formattedTime = "${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}";
 
     try {
-      await FirebaseFirestore.instance.collection('medications').doc(widget.documentId).update({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('medications')
+          .doc(widget.documentId)
+          .set({
+        'medicationName': widget.medicationName,
+        'selectedUnit': widget.selectedUnit,
+        'selectedFrequency': widget.selectedFrequency,
         'reminderTime': formattedTime,
-      });
+      }, SetOptions(merge: true));
 
       if (mounted) {
         Navigator.push(
@@ -43,7 +52,8 @@ class _DatePageState extends State<DatePage> {
               selectedUnit: widget.selectedUnit,
               selectedFrequency: widget.selectedFrequency,
               reminderTime: formattedTime,
-              documentId: widget.documentId, // Pass document ID
+              documentId: widget.documentId, 
+              userId: widget.userId,
             ),
           ),
         );
@@ -73,29 +83,24 @@ class _DatePageState extends State<DatePage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
-
-            // Time Picker
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Hours Picker
                 Expanded(
                   child: CupertinoPicker(
                     scrollController: FixedExtentScrollController(initialItem: selectedHour - 1),
                     itemExtent: 32.0,
                     onSelectedItemChanged: (int index) {
                       setState(() {
-                        selectedHour = (index ) % 23 == 0 ? 24 : (index ) % 23;
+                        selectedHour = index + 1;
                       });
                     },
-                    children: List<Widget>.generate(23, (int index) => Center(child: Text((index).toString().padLeft(2, '0')))),
+                    children: List.generate(24, (int index) => Center(child: Text((index + 1).toString().padLeft(2, '0')))),
                   ),
                 ),
                 const SizedBox(width: 8),
                 const Text(":", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
-
-                // Minutes Picker
                 Expanded(
                   child: CupertinoPicker(
                     scrollController: FixedExtentScrollController(initialItem: selectedMinute ~/ 5),
@@ -105,27 +110,21 @@ class _DatePageState extends State<DatePage> {
                         selectedMinute = index * 5;
                       });
                     },
-                    children: List<Widget>.generate(12, (int index) => Center(child: Text((index * 5).toString().padLeft(2, '0')))),
+                    children: List.generate(12, (int index) => Center(child: Text((index * 5).toString().padLeft(2, '0')))),
                   ),
                 ),
-                const SizedBox(width: 8),
-
-                // AM/PM Selector
-                
               ],
             ),
           ],
         ),
       ),
-
-      // Save & Next Button
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SizedBox(
           width: double.infinity,
           height: 60,
           child: ElevatedButton(
-            onPressed: saveReminderTime, // Save time and navigate
+            onPressed: saveReminderTime,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               shape: RoundedRectangleBorder(
