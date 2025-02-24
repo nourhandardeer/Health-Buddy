@@ -7,8 +7,7 @@ class RefillRequest extends StatefulWidget {
   final String selectedUnit;
   final String selectedFrequency;
   final String reminderTime;
-  final String documentId;
-  final String userId; // Receive user ID
+  final String documentId; // Receive document ID
 
   const RefillRequest({
     Key? key,
@@ -16,8 +15,7 @@ class RefillRequest extends StatefulWidget {
     required this.selectedUnit,
     required this.selectedFrequency,
     required this.reminderTime,
-    required this.documentId,
-    required this.userId, // Pass user ID
+    required this.documentId, // Pass document ID
   }) : super(key: key);
 
   @override
@@ -26,33 +24,21 @@ class RefillRequest extends StatefulWidget {
 
 class _RefillRequestState extends State<RefillRequest> {
   bool isReminderOn = false;
-  TextEditingController reminderController = TextEditingController(text: "10 pills");
-  TextEditingController currentInventory = TextEditingController(text: "10 pills");
+  TextEditingController reminderController =
+      TextEditingController(text: "10 ");
+  TextEditingController currentInventory =
+      TextEditingController(text: "30 ");
 
   Future<void> saveRefillReminder() async {
     try {
-
-      print("User ID: ${widget.userId}");
-      print("Document ID: ${widget.documentId}");
-    
-      if (widget.userId.isEmpty || widget.documentId.isEmpty) {
-      throw Exception("User ID or Document ID is empty.");
-      }
-
+      // Update the same document in the "meds" collection with the refill reminder details.
       await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .collection('medications')
+          .collection('meds')
           .doc(widget.documentId)
-          .set({
-        'medicationName': widget.medicationName,
-        'selectedUnit': widget.selectedUnit,
-        'selectedFrequency': widget.selectedFrequency,
-        'reminderTime': widget.reminderTime,
-        'refillReminder': isReminderOn ? reminderController.text : "No refill reminder",
-        'currentInventory': isReminderOn ?currentInventory.text : "No refill reminder",
-        
-      }, SetOptions(merge: true));
+          .update({
+        'currentInventory': currentInventory.text,
+        'remindMeWhen': isReminderOn ? reminderController.text : "No refill reminder",
+      });
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -62,7 +48,10 @@ class _RefillRequestState extends State<RefillRequest> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving refill reminder: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error saving refill reminder: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -101,7 +90,7 @@ class _RefillRequestState extends State<RefillRequest> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-
+            // Toggle Refill Reminder
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
@@ -128,7 +117,7 @@ class _RefillRequestState extends State<RefillRequest> {
               ),
             ),
             const SizedBox(height: 20),
-
+            // Refill Reminder Amount Input
             if (isReminderOn)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,6 +141,7 @@ class _RefillRequestState extends State<RefillRequest> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 20),
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -173,9 +163,8 @@ class _RefillRequestState extends State<RefillRequest> {
                   ),
                 ],
               ),
-
             const Spacer(),
-
+            // Save Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
