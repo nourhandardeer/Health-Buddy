@@ -24,12 +24,20 @@ class RefillRequest extends StatefulWidget {
 
 class _RefillRequestState extends State<RefillRequest> {
   bool isReminderOn = false;
-  TextEditingController reminderController = TextEditingController(text: "10 pills");
-TextEditingController currentInventory = TextEditingController(text: "10 pills");
+  TextEditingController reminderController =
+      TextEditingController(text: "10 ");
+  TextEditingController currentInventory =
+      TextEditingController(text: "30 ");
+
   Future<void> saveRefillReminder() async {
     try {
-      await FirebaseFirestore.instance.collection('medications').doc(widget.documentId).update({
-        'refillReminder': isReminderOn ? reminderController.text : "No refill reminder",
+      // Update the same document in the "meds" collection with the refill reminder details.
+      await FirebaseFirestore.instance
+          .collection('meds')
+          .doc(widget.documentId)
+          .update({
+        'currentInventory': currentInventory.text,
+        'remindMeWhen': isReminderOn ? reminderController.text : "No refill reminder",
       });
 
       if (mounted) {
@@ -40,7 +48,10 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving refill reminder: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error saving refill reminder: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -79,7 +90,6 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-
             // Toggle Refill Reminder
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -100,14 +110,13 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
                       setState(() {
                         isReminderOn = value;
                       });
-                    }, // Only update state, no navigation
+                    },
                     activeColor: Colors.green,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-
             // Refill Reminder Amount Input
             if (isReminderOn)
               Column(
@@ -132,7 +141,8 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
                       ),
                     ),
                   ),
-                   const Align(
+                  const SizedBox(height: 20),
+                  const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "Remind me when remaining",
@@ -151,12 +161,9 @@ TextEditingController currentInventory = TextEditingController(text: "10 pills")
                       ),
                     ),
                   ),
-                   
                 ],
               ),
-
             const Spacer(),
-
             // Save Button
             SizedBox(
               width: double.infinity,

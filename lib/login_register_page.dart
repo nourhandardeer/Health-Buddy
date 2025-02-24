@@ -14,6 +14,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+
   String? errorMessage = '';
 
   Future<void> _login() async {
@@ -21,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await Auth().signInWithEmailAndPassword(
         email: emailController.text,
         password: passwordController.text,
+        phone: phoneController.text ,
       );
       Navigator.pushReplacement(
         context,
@@ -92,6 +95,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Password',
                     labelStyle: TextStyle(fontSize: 18, color: Colors.black),
                     hintText: 'Enter your Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: phoneController,
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    labelStyle: TextStyle(fontSize: 18, color: Colors.black),
+                    hintText: 'Enter your Phone Number',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

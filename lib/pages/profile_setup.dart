@@ -5,16 +5,21 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:graduation_project/home.dart';
 
+import '../EmergencyContactHelper.dart';
+
+
 class ProfileSetupPage extends StatefulWidget {
   final String userId;
   final String firstName;
   final String lastName;
+  final String phone;
   const ProfileSetupPage({
-    Key? key,
+    super.key,
     required this.userId,
     required this.firstName,
     required this.lastName,
-  }) : super(key: key);
+    required this.phone
+  });
 
   @override
   _ProfileSetupPageState createState() => _ProfileSetupPageState();
@@ -25,6 +30,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final ImagePicker _picker = ImagePicker();
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
+  late TextEditingController _phone;
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _illnessesController = TextEditingController();
   List<Map<String, String>> emergencyContacts = [];
@@ -34,6 +40,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     super.initState();
     _firstNameController = TextEditingController(text: widget.firstName);
     _lastNameController = TextEditingController(text: widget.lastName);
+    _phone = TextEditingController(text: widget.phone);
   }
 
   void _saveProfile() async {
@@ -59,20 +66,19 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             : defaultProfileImage, // Store image path or empty
         'age': _ageController.text.trim(),
         'illnesses': _illnessesController.text.trim(),
-        'emergencyContacts': emergencyContacts, // Store list of contacts
+        'emergencyContacts': emergencyContacts,
+        'phone': _phone.text.trim(),// Store list of contacts
       });
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile saved successfully!')),
       );
 
       // Navigate to Home Screen
-      Navigator.pushReplacement(
-        context,
+      Navigator.pushReplacement(context,
         MaterialPageRoute(
             builder: (context) =>
-                HomeScreen()), // Ensure HomeScreen() is implemented
+                HomeScreen()),
       );
     } catch (error) {
       print("Error saving profile: $error");
@@ -88,7 +94,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         await _picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile == null) {
-      print("No image selected."); // Debugging message
+      print("No image selected.");
       return; // Stop execution if no image was picked
     }
 
@@ -98,54 +104,38 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   }
 
   void _addEmergencyContact() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        TextEditingController nameController = TextEditingController();
-        TextEditingController phoneController = TextEditingController();
-        TextEditingController relationController = TextEditingController();
-        return AlertDialog(
-          title: Text("Add Emergency Contact"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(labelText: "Name")),
-              TextField(
-                  controller: phoneController,
-                  decoration: InputDecoration(labelText: "Phone"),
-                  keyboardType: TextInputType.phone),
-              TextField(
-                  controller: relationController,
-                  decoration: InputDecoration(labelText: "Relation")),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  emergencyContacts.add({
-                    "name": nameController.text,
-                    "phone": phoneController.text,
-                    "relation": relationController.text,
-                  });
-                });
-                Navigator.pop(context);
-              },
-              child: Text("Add"),
-            ),
-          ],
-        );
-      },
-    );
+    EmergencyContactHelper.EmergencyContactDialog(context, (newContact) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      try {
+        // Store contact under the patient's emergencyContacts collection
+        DocumentReference ref = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('emergencyContacts')
+            .add(newContact);
+
+        // Also store a reference under emergencyContacts collection (for lookup)
+        await FirebaseFirestore.instance
+            .collection('emergencyContacts')
+            .doc(newContact["phone"]) // Using email as the document ID
+            .set({
+          ...newContact,
+          'linkedPatientId': user.uid, // Link this contact to the patient
+        });
+
+        setState(() {
+          emergencyContacts.add(newContact);
+        });
+
+        print("Emergency contact added successfully.");
+      } catch (e) {
+        print("Error adding contact: $e");
+      }
+    });
   }
+
 
   @override
   Widget build(BuildContext context) {

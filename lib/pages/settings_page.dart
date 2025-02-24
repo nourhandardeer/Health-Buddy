@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/pages/loggin.dart';
+import 'package:graduation_project/pages/splash_screen.dart';
+import 'EmergencyContactPage.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -44,7 +46,8 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text('Manage emergency numbers'),
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () {
-              // Navigate to emergency contacts page
+              Navigator.push(context, MaterialPageRoute(builder: (context) => EmergencyContactPage()));
+
             },
           ),
           Divider(),
@@ -79,7 +82,7 @@ class SettingsPage extends StatelessWidget {
     // Navigate to the login screen after signing out
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
+      MaterialPageRoute(builder: (context) => SplashScreen()),
     );
   },
 ),
@@ -88,3 +91,4 @@ class SettingsPage extends StatelessWidget {
     );
   }
 }
+
