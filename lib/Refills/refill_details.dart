@@ -1,245 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/home.dart';
 
 class RefillDetails extends StatefulWidget {
-  const RefillDetails({super.key, required Map<String, String> person});
+  final Map<String, dynamic> medData;
+  const RefillDetails({super.key, required this.medData});
 
   @override
   _RefillDetailsState createState() => _RefillDetailsState();
 }
 
 class _RefillDetailsState extends State<RefillDetails> {
-  int _currentInventory = 29; // Default inventory count
-  int _reminderAmount = 10; // Default reminder amount
-  bool _reminderOn = true; // Toggle switch for reminders
+  late int _currentInventory;
+  late int _reminderAmount;
+  bool _reminderOn = true;
 
-  // Function to show the bottom sheet
-  void _showAddPackageSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildAddPillOption(10),
-              _buildAddPillOption(20),
-              _buildAddPillOption(30),
-              _buildAddPillOption(40),
-              _buildAddPillOption(50),
-              const Divider(),
-              ListTile(
-                title: const Text("Custom amount", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                onTap: _showCustomAmountDialog,
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    _currentInventory = widget.medData['pillsLeft'] ?? 0;
+    _reminderAmount = 10;
   }
 
-  // Function to add a fixed number of pills
-  Widget _buildAddPillOption(int pills) {
-    return ListTile(
-      title: Text("Add $pills pills", style: const TextStyle(fontSize: 16)),
-      onTap: () {
-        setState(() {
-          _currentInventory += pills;
-        });
-        Navigator.pop(context); // Close bottom sheet
-      },
-    );
+  void _updateInventory(int amount) {
+    setState(() {
+      _currentInventory += amount;
+    });
   }
 
-  // Function to show a dialog for custom input
-  void _showCustomAmountDialog() {
-    Navigator.pop(context); // Close bottom sheet
-    TextEditingController _customController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Enter custom amount"),
-          content: TextField(
-            controller: _customController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: "Enter number of pills"),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), // Close dialog
-              child: const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                int? newPills = int.tryParse(_customController.text);
-                if (newPills != null && newPills > 0) {
-                  setState(() {
-                    _currentInventory += newPills;
-                  });
-                  Navigator.pop(context); // Close dialog
-                }
-              },
-              child: const Text("Add"),
-            ),
-          ],
-        );
-      },
-    );
+  void _saveRefillData() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('medications')
+        .doc(widget.medData['id'])
+        .update({'pillsLeft': _currentInventory}).then((_) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen()),
+        (Route<dynamic> route) => false,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Refill Details"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text("Refills"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
-            const Text(
-              "Vitamin C",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-
-            // Subtitle
-            const Text(
-              "Set up the current supply of your medication and get reminders to refill.",
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-
-            // Current Inventory Dropdown
-            const Text(
-              "Current Inventory",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            Text(widget.medData['name'] ?? "Unknown Medication",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButton<int>(
-                value: _currentInventory,
-                isExpanded: true,
-                underline: const SizedBox(),
-                items: List.generate(100, (index) => index + 1)
-                    .map((value) => DropdownMenuItem<int>(
-                          value: value,
-                          child: Text("$value pills"),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _currentInventory = value!;
-                  });
-                },
-              ),
+            const Text("Manage your medication supply and refill reminders."),
+            const SizedBox(height: 20),
+            
+            Text("Current Inventory: $_currentInventory pills"),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () => _updateInventory(10),
+              child: const Text("Add 10 Pills"),
             ),
-            const SizedBox(height: 16),
-
-            // "+ Add new package" Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _showAddPackageSheet,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[300],
-                  foregroundColor: Colors.black,
-                ),
-                child: const Text("+ Add new package"),
-              ),
+            ElevatedButton(
+              onPressed: () => _updateInventory(20),
+              child: const Text("Add 20 Pills"),
             ),
-            const SizedBox(height: 24),
-
-            // Reminder Switch
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Remind me to refill",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Switch(
-                  value: _reminderOn,
-                  onChanged: (value) {
-                    setState(() {
-                      _reminderOn = value;
-                    });
-                  },
-                ),
-              ],
+            
+            SwitchListTile(
+              title: const Text("Enable refill reminders"),
+              value: _reminderOn,
+              onChanged: (value) {
+                setState(() {
+                  _reminderOn = value;
+                });
+              },
             ),
-            const SizedBox(height: 16),
-
-            // "Remind me at" Dropdown (SEPARATE FROM INVENTORY)
-            const Text(
-              "Remind me at",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButton<int>(
-                value: _reminderAmount, // DIFFERENT VALUE
-                isExpanded: true,
-                underline: const SizedBox(),
-                items: List.generate(100, (index) => index + 1)
-                    .map((value) => DropdownMenuItem<int>(
-                          value: value,
-                          child: Text("$value pills"),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _reminderAmount = value!;
-                  });
-                },
-              ),
-            ),
+            
             const Spacer(),
-
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Navigate to Refill Page
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HomeScreen(),
-                    ),
-                    (Route<dynamic> route) => false, // Clears the stack, so it goes directly to the new page
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[300],
-                  foregroundColor: Colors.black,
-                ),
-                child: const Text("Save"),
-              ),
+            ElevatedButton(
+              onPressed: _saveRefillData,
+              child: const Text("Save Changes"),
             ),
           ],
         ),
