@@ -28,6 +28,9 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
       String uid = user.uid;
 
       try {
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(uid).get();
+        if (!userDoc.exists) return;
+
         // Save data in the "meds" collection with an added "userId" field.
         DocumentReference docRef = await _firestore.collection('meds').add({
           'name': medicationController.text,
@@ -37,6 +40,38 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
         });
         String docId = docRef.id; // Capture the document ID
 
+        // Fetch emergency contacts from subcollection
+        QuerySnapshot emergencyContactsSnapshot = await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('emergencyContacts')
+            .get();
+
+        for (var doc in emergencyContactsSnapshot.docs) {
+          Map<String, dynamic> contactData = doc.data() as Map<String, dynamic>;
+          String contactPhone = contactData['phone'];
+
+          // Check if an emergency contact exists as a user in the users collection
+          QuerySnapshot contactUserSnapshot = await _firestore
+              .collection('users')
+              .where('phone', isEqualTo: contactPhone)
+              .get();
+
+          for (var contactUserDoc in contactUserSnapshot.docs) {
+            String contactUserId = contactUserDoc.id; // Get emergency contact's userId
+
+            // Avoid duplicating for the same user
+            if (contactUserId != uid) {
+              await _firestore.collection('meds').add({
+                'name': medicationController.text,
+                'unit': selectedUnit,
+                'userId': contactUserId, // Emergency contact's userId
+                'linkedFrom': uid, // Tracks the original user
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+            }
+          }
+        }
         // Navigate to TimesPage after saving and pass the documentId
         Navigator.push(
           context,
