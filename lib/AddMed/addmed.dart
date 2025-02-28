@@ -80,7 +80,7 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
       }
     }
 
-    // Step 2: Reverse Check (Save for the Original User)
+  // Step 2: Reverse Check (Save for the Original User)
 QuerySnapshot reverseEmergencyContactsSnapshot = await _firestore
     .collection('users')
     .where('phone', isEqualTo: user.phoneNumber) // Find the current user by phone
@@ -88,6 +88,11 @@ QuerySnapshot reverseEmergencyContactsSnapshot = await _firestore
 
 for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
   String originalUserId = reverseDoc.id; // This is the original user (A)
+
+  // Prevent adding the same medication twice for the current user
+  if (originalUserId == uid) {
+    continue; // Skip if the current user is the same as the reverse lookup user
+  }
 
   // Fetch A's emergency contacts subcollection
   QuerySnapshot originalUserEmergencyContacts = await _firestore
@@ -107,6 +112,7 @@ for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
     });
   }
 }
+
 
 
     // Navigate to TimesPage after saving
