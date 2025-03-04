@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:graduation_project/Refills/refill_details.dart';
 // import 'refill_detail';
 
 class RefillsPage extends StatefulWidget {
@@ -29,7 +30,7 @@ class _RefillsPageState extends State<RefillsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Refills Needed"),
+        // title: const Text("Refills Needed"),
       ),
       body: _buildRefillsList(user.uid),
     );
@@ -95,14 +96,14 @@ class _RefillsPageState extends State<RefillsPage> {
                     ),
                   ],
                 ),
-                // onTap: () {
-                //   Navigator.push(
-                //     context,
-                //     MaterialPageRoute(
-                //       builder: (context) => RefillDetails(medData: data),
-                //     ),
-                //   );
-                // },
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RefillDetailsPage(medData: data),
+                    ),
+                  );
+                },
               ),
             );
           },
