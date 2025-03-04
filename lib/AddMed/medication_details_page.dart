@@ -258,48 +258,100 @@ Future<void> _deleteMedication() async {
   }
 
   Widget _buildDropdownSection({
-    required IconData icon,
-    required String title,
-    required String field,
-    required String value,
-  }) {
-    List<String> intakeOptions = ["None", "Before Meal", "After Meal", "With Meal", "Custom"];
-    
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.blueAccent,
-          child: Icon(icon, color: Colors.white),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: Colors.grey[700],
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+  required IconData icon,
+  required String title,
+  required String field,
+  required String value,
+}) {
+  List<String> intakeOptions = ["None", "Before Meal", "After Meal", "With Meal", "Custom"];
+  
+  TextEditingController customController = TextEditingController(
+    text: (value == "Custom" && medData?['customIntakeAdvice'] != null)
+        ? medData!['customIntakeAdvice']
+        : '',
+  );
+
+  return Card(
+    elevation: 3,
+    margin: const EdgeInsets.symmetric(vertical: 10),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    child: Column(
+      children: [
+        ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.blueAccent,
+            child: Icon(icon, color: Colors.white),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          subtitle: DropdownButton<String>(
+            value: intakeOptions.contains(value) ? value : "Custom",
+            isExpanded: true,
+            items: intakeOptions.map((String option) {
+              return DropdownMenuItem<String>(
+                value: option,
+                child: Text(option),
+              );
+            }).toList(),
+            onChanged: (newValue) {
+              if (newValue == "Custom") {
+                _showCustomInputDialog(field, customController);
+              } else if (newValue != null) {
+                _updateData(field, newValue);
+              }
+            },
           ),
         ),
-        subtitle: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          items: intakeOptions.map((String option) {
-            return DropdownMenuItem<String>(
-              value: option,
-              child: Text(option),
-            );
-          }).toList(),
-          onChanged: (newValue) {
-            if (newValue != null) {
-              _updateData(field, newValue);
-            }
-          },
+        if (value == "Custom") 
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              medData?['customIntakeAdvice'] ?? 'Enter your custom advice',
+              style: const TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+void _showCustomInputDialog(String field, TextEditingController controller) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text("Enter Custom Intake Advice"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: "Write your intake advice..."),
         ),
-      ),
-    );
-  }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              String customAdvice = controller.text.trim();
+              if (customAdvice.isNotEmpty) {
+                _updateData("intakeAdvice", "Custom");
+                _updateData("customIntakeAdvice", customAdvice);
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
