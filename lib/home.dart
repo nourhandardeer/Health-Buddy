@@ -32,10 +32,12 @@ Future<void> takeMedication(String medId, Map<String, dynamic> medData) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    DateTime today = DateTime.now();
+    DateTime now = DateTime.now();
+    DateTime today = DateTime(now.year, now.month, now.day); // Remove time details
     DateTime? lastTakenDate;
+
     if (medData['lastTakenDate'] != null) {
-      lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
+        lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
     }
 
     bool alreadyTakenToday =
@@ -45,39 +47,50 @@ Future<void> takeMedication(String medId, Map<String, dynamic> medData) async {
         lastTakenDate.day == today.day;
 
     if (alreadyTakenToday) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("ypu have taken this mediction today")),
-      );
-      return;
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("You have already taken this medication today.")),
+        );
+        return;
     }
 
-    int currentInventory = medData['currentInventory'] is String
-        ? int.tryParse(medData['currentInventory']) ?? 0
-        : medData['currentInventory'] ?? 0;
-    int dosage = medData['dosage'] is String
-        ? int.tryParse(medData['dosage']) ?? 1
-        : medData['dosage'] ?? 1;
+    // ✅ Handle inventory (if exists)
+    bool hasInventory = medData.containsKey('currentInventory') && medData['currentInventory'] != null;
+    if (hasInventory) {
+        int currentInventory = medData['currentInventory'] is String
+            ? int.tryParse(medData['currentInventory']) ?? 0
+            : medData['currentInventory'] ?? 0;
+        int dosage = medData['dosage'] is String
+            ? int.tryParse(medData['dosage']) ?? 1
+            : medData['dosage'] ?? 1;
 
-    if (currentInventory <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Out of stock! You need to refill.")),
-      );
-      return;
+        if (currentInventory <= 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Out of stock! You need to refill.")),
+            );
+            return;
+        }
+
+        int updatedInventory = currentInventory - dosage;
+
+        await FirebaseFirestore.instance.collection('meds').doc(medId).update({
+            'currentInventory': updatedInventory,
+            'lastTakenDate': Timestamp.fromDate(today), // Save only the date
+        });
+
+    } else {
+        await FirebaseFirestore.instance.collection('meds').doc(medId).update({
+            'lastTakenDate': Timestamp.fromDate(today), // Save only the date
+        });
     }
-
-    int updatedInventory = currentInventory - dosage;
-
-    await FirebaseFirestore.instance.collection('meds').doc(medId).update({
-      'currentInventory': updatedInventory,
-      'lastTakenDate': Timestamp.fromDate(today),
-    });
 
     setState(() {});
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("تم تناول الدواء! المتبقي: $updatedInventory")),
+        const SnackBar(content: Text("Medication has been taken!")),
     );
-  }
+}
+
+
   Widget _buildTitle() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -129,102 +142,148 @@ Widget _buildMedicationsList() {
     );
   }
 
-  return StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('meds')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots(),
-    builder: (context, medSnapshot) {
-      if (medSnapshot.connectionState == ConnectionState.waiting) {
+  return FutureBuilder<DocumentSnapshot>(
+    future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+    builder: (context, userSnapshot) {
+      if (userSnapshot.connectionState == ConnectionState.waiting) {
         return const Center(child: CircularProgressIndicator());
       }
-      if (medSnapshot.hasError || !medSnapshot.hasData || medSnapshot.data!.docs.isEmpty) {
+      if (userSnapshot.hasError || !userSnapshot.hasData || !userSnapshot.data!.exists) {
         return const Center(
-          child: Text("No medications found", style: TextStyle(color: Colors.black)),
+          child: Text("Error loading user data", style: TextStyle(color: Colors.red)),
         );
       }
 
-      var medications = medSnapshot.data!.docs;
+      var userData = userSnapshot.data!.data() as Map<String, dynamic>;
 
-      return ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: medications.length,
-        itemBuilder: (context, index) {
-          var med = medications[index];
-          var medData = med.data() as Map<String, dynamic>;
-          String medId = med.id;
+      List<String> emergencyUserIds = (userData['emergencyContacts'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
 
-          DateTime today = DateTime.now();
-          DateTime? lastTakenDate;
-          if (medData['lastTakenDate'] != null) {
-            lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
+      return FutureBuilder<List<QuerySnapshot>>(
+        future: Future.wait([
+          FirebaseFirestore.instance
+              .collection('meds')
+              .where('userId', isEqualTo: user.uid)
+              .get(),
+          FirebaseFirestore.instance
+              .collection('meds')
+              .where('originalUserEmergencyContacts', arrayContains: user.uid)
+              .get(),
+          FirebaseFirestore.instance
+              .collection('meds')
+              .where('emergencyUserIds', arrayContains: user.uid)
+              .get(),
+        ]),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(
+              child: Text("Error loading medications", style: TextStyle(color: Colors.red)),
+            );
           }
 
-          bool alreadyTakenToday = lastTakenDate != null &&
-              lastTakenDate.year == today.year &&
-              lastTakenDate.month == today.month &&
-              lastTakenDate.day == today.day;
+          List<QueryDocumentSnapshot> medications = [
+            ...snapshot.data![0].docs,
+            ...snapshot.data![1].docs,
+            ...snapshot.data![2].docs
+          ];
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: GestureDetector(
-              onTap: () => _showMedicationDetails(context, medId, medData), // Show modal on tap
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: alreadyTakenToday ? Colors.blue : Colors.black,
-                    width: alreadyTakenToday ? 2 : 1,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    const Icon(Icons.medication, size: 30, color: Colors.black),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            medData['name'] ?? "Unknown",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              decoration: alreadyTakenToday ? TextDecoration.lineThrough : TextDecoration.none,
-                            ),
-                          ),
-                          Text(
-                            "${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
-                            style: TextStyle(
-                              fontSize: 14,
-                              decoration: alreadyTakenToday ? TextDecoration.lineThrough : TextDecoration.none,
-                            ),
-                          ),
-                        ],
+          if (medications.isEmpty) {
+            return const Center(
+              child: Text("No medications found", style: TextStyle(color: Colors.black)),
+            );
+          }
+
+          return ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: medications.length,
+            itemBuilder: (context, index) {
+              var med = medications[index];
+              var medData = med.data() as Map<String, dynamic>;
+              String medId = med.id;
+
+              DateTime today = DateTime.now();
+              DateTime? lastTakenDate;
+              if (medData['lastTakenDate'] != null) {
+                lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
+              }
+
+              bool alreadyTakenToday = lastTakenDate != null &&
+                  lastTakenDate.year == today.year &&
+                  lastTakenDate.month == today.month &&
+                  lastTakenDate.day == today.day;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: GestureDetector(
+                  onTap: () => _showMedicationDetails(context, medId, medData),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: alreadyTakenToday ? Colors.blue : Colors.black,
+                        width: alreadyTakenToday ? 2 : 1,
                       ),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    GestureDetector(
-                      onTap: alreadyTakenToday ? null : () => takeMedication(medId, medData),
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: alreadyTakenToday ? Colors.blue : Colors.black, width: 2),
-                          color: alreadyTakenToday ? Colors.blue : Colors.transparent,
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.medication, size: 30, color: Colors.black),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                medData['name'] ?? "Unknown",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: alreadyTakenToday
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
+                              ),
+                              Text(
+                                "${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  decoration: alreadyTakenToday
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: alreadyTakenToday
-                            ? const Icon(Icons.check, color: Colors.white, size: 18)
-                            : null,
-                      ),
+                        GestureDetector(
+                          onTap: alreadyTakenToday ? null : () => takeMedication(medId, medData),
+                          child: Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: alreadyTakenToday ? Colors.blue : Colors.black,
+                                  width: 2),
+                              color: alreadyTakenToday ? Colors.blue : Colors.transparent,
+                            ),
+                            child: alreadyTakenToday
+                                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         },
       );
@@ -234,7 +293,34 @@ Widget _buildMedicationsList() {
 
 
 
+
+
+
+
+
+
 void _showMedicationDetails(BuildContext context, String medId, Map<String, dynamic> medData) {
+  DateTime now = DateTime.now();
+  DateTime today = DateTime(now.year, now.month, now.day);
+  DateTime? lastTakenDate;
+
+  if (medData['lastTakenDate'] != null) {
+    lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
+  }
+
+  String takenAtText = "Not yet taken";
+  if (lastTakenDate != null) {
+    if (lastTakenDate.year == today.year &&
+        lastTakenDate.month == today.month &&
+        lastTakenDate.day == today.day) {
+      // Show only the time if taken today
+      takenAtText = "${lastTakenDate.hour.toString().padLeft(2, '0')}:${lastTakenDate.minute.toString().padLeft(2, '0')}";
+    } else {
+      // Show only the date if taken on a previous day
+      takenAtText = "${lastTakenDate.year}-${lastTakenDate.month.toString().padLeft(2, '0')}-${lastTakenDate.day.toString().padLeft(2, '0')}";
+    }
+  }
+
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -244,7 +330,7 @@ void _showMedicationDetails(BuildContext context, String medId, Map<String, dyna
         ),
         child: Container(
           padding: const EdgeInsets.all(20),
-          width: MediaQuery.of(context).size.width * 0.85, // 85% of screen width
+          width: MediaQuery.of(context).size.width * 0.85,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,14 +338,11 @@ void _showMedicationDetails(BuildContext context, String medId, Map<String, dyna
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Medication Icon
                   const Icon(Icons.medical_services, size: 40, color: Colors.blue),
-
-                  // Delete Button (Trash Icon)
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red, size: 28),
                     onPressed: () {
-                      _deleteMedication(medId, context); // Call delete function
+                      _deleteMedication(medId, context);
                     },
                   ),
                 ],
@@ -275,35 +358,44 @@ void _showMedicationDetails(BuildContext context, String medId, Map<String, dyna
               const SizedBox(height: 5),
               Center(
                 child: Text(
-                  "frequency: ${medData['frequency'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
+                  "Frequency: ${medData['frequency'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
                   style: const TextStyle(fontSize: 16, color: Colors.black54),
                 ),
-                
               ),
               const SizedBox(height: 10),
-              
-
               Center(
                 child: Text(
                   "Scheduled at: ${medData['reminderTime'] ?? 'N/A'}",
                   style: const TextStyle(fontSize: 16, color: Colors.black54),
                 ),
               ),
+              const SizedBox(height: 10),
+              Center(
+                child: Text(
+                  "Taken at: $takenAtText",
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+              ),
               const SizedBox(height: 20),
               Center(
                 child: Text(
-                  "unit: 1${medData['unit'] ?? 'pill(s)'}",
+                  "Unit: ${medData['unit'] ?? 'pill(s)'}",
                   style: const TextStyle(fontSize: 16, color: Colors.black54),
                 ),
               ),
               const SizedBox(height: 10),
-
-              // "Mark as Taken" Button
+              Center(
+                child: Text(
+                  "Intake Advice: ${medData['intakeAdvice'] ?? ''}",
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+              ),
+              const SizedBox(height: 10),
               Center(
                 child: ElevatedButton.icon(
                   onPressed: () {
                     takeMedication(medId, medData);
-                    Navigator.pop(context); // Close modal after action
+                    Navigator.pop(context);
                   },
                   icon: const Icon(Icons.check),
                   label: const Text("Mark as Taken"),
@@ -317,10 +409,7 @@ void _showMedicationDetails(BuildContext context, String medId, Map<String, dyna
                   ),
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              // "Close" Button
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -334,6 +423,7 @@ void _showMedicationDetails(BuildContext context, String medId, Map<String, dyna
     },
   );
 }
+
 
 
 void _deleteMedication(String medId, BuildContext context) async {

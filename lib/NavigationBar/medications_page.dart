@@ -33,72 +33,113 @@ class _MedicationsPageState extends State<MedicationsPage> {
     );
   }
 
-  Widget _buildMedicationsList() {
-    final user = _auth.currentUser;
-    if (user == null) {
-      return const Center(
-        child: Text(
-          "Please log in to view medications.",
-          style: TextStyle(color: Colors.black),
-        ),
-      );
-    }
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestore
-          .collection('meds')
-          .where('userId', isEqualTo: user.uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return const Center(
-              child: Text("Error fetching medications",
-                  style: TextStyle(color: Colors.black)));
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return _buildEmptyState();
-        }
-        var medications = snapshot.data!.docs;
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: medications.length,
-          itemBuilder: (context, index) {
-            var med = medications[index];
-            var medData = med.data() as Map<String, dynamic>;
-            return Card(
-              color: Colors.grey[200],
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: ListTile(
-                leading:
-                    const Icon(Icons.medical_services, color: Colors.blue),
-                title: Text(
-                  medData["name"] ?? "Unknown Medication",
-                  style: const TextStyle(color: Colors.black, fontSize: 18),
-                ),
-                subtitle: Text(
-                  "Daily — ${medData['reminderTime'] ?? 'N/A'}",
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          MedicationDetailsPage(medId: med.id),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        );
-      },
+    Widget _buildMedicationsList() {
+  final user = _auth.currentUser;
+  if (user == null) {
+    return const Center(
+      child: Text(
+        "Please log in to view medications.",
+        style: TextStyle(color: Colors.black),
+      ),
     );
   }
+
+  return FutureBuilder<DocumentSnapshot>(
+    future: _firestore.collection('users').doc(user.uid).get(),
+    builder: (context, userSnapshot) {
+      if (userSnapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (userSnapshot.hasError || !userSnapshot.hasData || !userSnapshot.data!.exists) {
+        return const Center(
+          child: Text("Error loading user data", style: TextStyle(color: Colors.red)),
+        );
+      }
+
+      var userData = userSnapshot.data!.data() as Map<String, dynamic>;
+
+      List<String> emergencyUserIds = (userData['emergencyContacts'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      return FutureBuilder<List<QuerySnapshot>>(
+        future: Future.wait([
+          _firestore
+              .collection('meds')
+              .where('userId', isEqualTo: user.uid)
+              .get(),
+          _firestore
+              .collection('meds')
+              .where('originalUserEmergencyContacts', arrayContains: user.uid)
+              .get(),
+          _firestore
+              .collection('meds')
+              .where('emergencyUserIds', arrayContains: user.uid)
+              .get(),
+        ]),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(
+              child: Text("Error loading medications", style: TextStyle(color: Colors.red)),
+            );
+          }
+
+          List<QueryDocumentSnapshot> medications = [
+            ...snapshot.data![0].docs,
+            ...snapshot.data![1].docs,
+            ...snapshot.data![2].docs
+          ];
+
+          if (medications.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: medications.length,
+            itemBuilder: (context, index) {
+              var med = medications[index];
+              var medData = med.data() as Map<String, dynamic>;
+
+              return Card(
+                color: Colors.grey[200],
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading: const Icon(Icons.medical_services, color: Colors.blue),
+                  title: Text(
+                    medData["name"] ?? "Unknown Medication",
+                    style: const TextStyle(color: Colors.black, fontSize: 18),
+                  ),
+                  subtitle: Text(
+                    "Daily — ${medData['reminderTime'] ?? 'N/A'}",
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            MedicationDetailsPage(medId: med.id),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+}
+
+
 
   Widget _buildEmptyState() {
     return Center(

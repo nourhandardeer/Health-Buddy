@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'times.dart';
-import 'date.dart';
 
 class AddMedicationPage extends StatefulWidget {
   @override
@@ -12,6 +11,7 @@ class AddMedicationPage extends StatefulWidget {
 class _AddMedicationPageState extends State<AddMedicationPage> {
   final TextEditingController medicationController = TextEditingController();
   String? selectedUnit;
+  int dosage = 1;
 
   final List<String> units = [
     "Pills", "Ampoules", "Tablets", "Capsules", "IU", "Application", "Drop",
@@ -22,119 +22,125 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> _saveMedicationData() async {
+ Future<void> _saveMedicationData() async {
   User? user = FirebaseAuth.instance.currentUser;
   if (user == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('User not logged in'),
-        backgroundColor: Colors.red,
-      ),
+      const SnackBar(content: Text('User not logged in'), backgroundColor: Colors.red),
     );
     return;
   }
 
   String uid = user.uid;
+  String docId = ""; // تعريف docId بدون تحديده مباشرة
 
   try {
-    // Save medication for the current user
-    DocumentReference docRef = await _firestore.collection('meds').add({
-      'name': medicationController.text,
-      'unit': selectedUnit,
-      'userId': uid,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    String docId = docRef.id; // Capture the document ID
-
-    /// ---------------- Step 1: Save for Emergency Contacts ----------------
-    QuerySnapshot emergencyContactsSnapshot = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('emergencyContacts')
+    // **تحقق مما إذا كان هناك دواء بنفس الاسم لنفس المستخدم**
+    QuerySnapshot existingMeds = await FirebaseFirestore.instance
+        .collection('meds')
+        .where('userId', isEqualTo: uid)
+        .where('name', isEqualTo: medicationController.text)
         .get();
 
-    List<String> emergencyContacts = emergencyContactsSnapshot.docs
-        .map((doc) => doc['phone'] as String)
-        .toList();
+    if (existingMeds.docs.isNotEmpty) {
+      docId = existingMeds.docs.first.id; // إذا كان موجودًا، استخدم نفس الـ docId
+      print("⚠️ الدواء موجود بالفعل، سيتم التحديث فقط.");
 
-    // Query users who match the emergency contacts (batch query for efficiency)
-    if (emergencyContacts.isNotEmpty) {
-      QuerySnapshot emergencyUsersSnapshot = await _firestore
+      // **تحديث فقط بدون فقدان البيانات السابقة**
+      await FirebaseFirestore.instance.collection('meds').doc(docId).update({
+        'unit': selectedUnit,
+        'dosage': dosage,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } else {
+      docId = FirebaseFirestore.instance.collection('meds').doc().id; // إنشاء ID جديد إذا لم يكن موجودًا
+
+      // **جلب emergencyUserIds و originalUserEmergencyContacts**
+      QuerySnapshot emergencyContactsSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where('phone', whereIn: emergencyContacts)
+          .doc(uid)
+          .collection('emergencyContacts')
           .get();
 
-      for (var emergencyUserDoc in emergencyUsersSnapshot.docs) {
-        String emergencyUserId = emergencyUserDoc.id;
+      List<String> emergencyContacts = emergencyContactsSnapshot.docs
+          .map((doc) => doc['phone'] as String)
+          .toList();
 
-        if (emergencyUserId != uid) {
-          await _firestore.collection('meds').add({
-            'name': medicationController.text,
-            'unit': selectedUnit,
-            'userId': emergencyUserId,
-            'linkedFrom': uid, // Tracks the original user
-            'timestamp': FieldValue.serverTimestamp(),
-          });
+      List<String> emergencyUserIds = [];
+
+      if (emergencyContacts.isNotEmpty) {
+        QuerySnapshot emergencyUsersSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('phone', whereIn: emergencyContacts)
+            .get();
+
+        emergencyUserIds = emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
+      }
+
+      // جلب الـ originalUserEmergencyContacts
+      QuerySnapshot reverseEmergencyContactsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('phone', isEqualTo: user.phoneNumber)
+          .get();
+
+      List<String> originalUserEmergencyContacts = [];
+
+      for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
+        String originalUserId = reverseDoc.id;
+        if (originalUserId == uid) continue;
+
+        QuerySnapshot originalUserEmergencyContactsSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(originalUserId)
+            .collection('emergencyContacts')
+            .where('phone', isEqualTo: user.phoneNumber)
+            .get();
+
+        if (originalUserEmergencyContactsSnapshot.docs.isNotEmpty) {
+          originalUserEmergencyContacts.add(originalUserId);
         }
       }
+
+      // **حفظ البيانات في Firestore لأول مرة**
+      await FirebaseFirestore.instance.collection('meds').doc(docId).set({
+        'name': medicationController.text,
+        'unit': selectedUnit,
+        'userId': uid,
+        'dosage': dosage,
+        'timestamp': FieldValue.serverTimestamp(),
+        'linkedFrom': uid,
+        'emergencyUserIds': emergencyUserIds,
+        'originalUserEmergencyContacts': originalUserEmergencyContacts,
+      });
     }
 
-  // Step 2: Reverse Check (Save for the Original User)
-QuerySnapshot reverseEmergencyContactsSnapshot = await _firestore
-    .collection('users')
-    .where('phone', isEqualTo: user.phoneNumber) // Find the current user by phone
-    .get();
-
-for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
-  String originalUserId = reverseDoc.id; // This is the original user (A)
-
-  // Prevent adding the same medication twice for the current user
-  if (originalUserId == uid) {
-    continue; // Skip if the current user is the same as the reverse lookup user
-  }
-
-  // Fetch A's emergency contacts subcollection
-  QuerySnapshot originalUserEmergencyContacts = await _firestore
-      .collection('users')
-      .doc(originalUserId)
-      .collection('emergencyContacts')
-      .where('phone', isEqualTo: user.phoneNumber) // Check if B is an emergency contact of A
-      .get();
-
-  if (originalUserEmergencyContacts.docs.isNotEmpty) {
-    await _firestore.collection('meds').add({
-      'name': medicationController.text,
-      'unit': selectedUnit,
-      'userId': originalUserId, // Save for the original user (A)
-      'linkedFrom': uid, // Tracks the emergency contact (B) who added it
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-  }
-}
-
-
-
-    // Navigate to TimesPage after saving
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TimesPage(
-          medicationName: medicationController.text,
-          selectedUnit: selectedUnit!,
-          documentId: docId,
-        ),
-      ),
-    );
+    // الانتقال للصفحة التالية
+    _navigateToTimesPage(docId);
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error saving data: $e'),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text('Error saving data: $e'), backgroundColor: Colors.red),
     );
   }
 }
+
+  void _navigateToTimesPage(String docId) {
+    try {
+      if (selectedUnit != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TimesPage(
+              medicationName: medicationController.text,
+              selectedUnit: selectedUnit!,
+              documentId: docId,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print("❌ Navigation Error: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,6 +182,37 @@ for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
                   .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
                   .toList(),
               onChanged: (value) => setState(() => selectedUnit = value),
+            ),
+            const Text(
+              "Select Dosage",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // زر تقليل الجرعة
+                IconButton(
+                  onPressed: dosage > 1
+                      ? () => setState(() => dosage--)
+                      : null, // تعطيل الزر إذا كانت الجرعة 1
+                  icon: const Icon(Icons.remove_circle, color: Colors.red, size: 30),
+                ),
+
+                // عرض الجرعة والوحدة بجانبها
+                Text(
+                  "$dosage ${selectedUnit ?? ''}",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+
+                // زر زيادة الجرعة
+                IconButton(
+                  onPressed: dosage < 10
+                      ? () => setState(() => dosage++)
+                      : null, // تعطيل الزر إذا كانت الجرعة 10
+                  icon: const Icon(Icons.add_circle, color: Colors.green, size: 30),
+                ),
+              ],
             ),
           ],
         ),

@@ -30,31 +30,37 @@ class _RefillRequestState extends State<RefillRequest> {
       TextEditingController(text: "30 ");
 
   Future<void> saveRefillReminder() async {
-    try {
-      // Update the same document in the "meds" collection with the refill reminder details.
+  try {
+    Map<String, dynamic> dataToUpdate = {};
+
+    if (isReminderOn) {
+      dataToUpdate['currentInventory'] = currentInventory.text;
+      dataToUpdate['remindMeWhen'] = reminderController.text;
+    }
+
+    // ✅ التحقق من أن هناك بيانات قبل استدعاء update()
+    if (dataToUpdate.isNotEmpty) {
       await FirebaseFirestore.instance
           .collection('meds')
           .doc(widget.documentId)
-          .update({
-        'currentInventory': currentInventory.text,
-        'remindMeWhen': isReminderOn ? reminderController.text : "No refill reminder",
-      });
+          .update(dataToUpdate);
+    }
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving refill reminder: $e'),
-          backgroundColor: Colors.red,
-        ),
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error saving refill reminder: $e'), backgroundColor: Colors.red),
+    );
   }
+}
+
+
+
 
   @override
   Widget build(BuildContext context) {

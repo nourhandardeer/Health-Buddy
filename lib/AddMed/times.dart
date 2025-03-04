@@ -69,47 +69,44 @@ class _TimesPageState extends State<TimesPage> {
 
   /// Updates the existing document with the selected frequency data and navigates to DatePage.
   Future<void> saveFrequency() async {
-    if (selectedFrequency != null) {
-      try {
-        // Update the existing document in the 'meds' collection with frequency data.
-        await FirebaseFirestore.instance
-            .collection('meds')
-            .doc(widget.documentId)
-            .update({
-          'frequency': selectedFrequency,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+  if (selectedFrequency != null) {
+    try {
+      await FirebaseFirestore.instance
+          .collection('meds')
+          .doc(widget.documentId)
+          .update({
+        'frequency': selectedFrequency,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DatePage(
-                medicationName: widget.medicationName,
-                selectedUnit: widget.selectedUnit,
-                selectedFrequency: selectedFrequency!,
-                documentId: widget.documentId, // Pass the same document ID
-              ),
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DatePage(
+              medicationName: widget.medicationName,
+              selectedUnit: widget.selectedUnit,
+              selectedFrequency: selectedFrequency!,
+              documentId: widget.documentId, // تمرير نفس الـ documentId
             ),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error saving data: $e'),
-              backgroundColor: Colors.red),
+          ),
         );
       }
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Please select a frequency before proceeding'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error saving frequency: $e'), backgroundColor: Colors.red),
       );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please select a frequency before proceeding'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

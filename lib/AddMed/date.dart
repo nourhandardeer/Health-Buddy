@@ -27,57 +27,38 @@ class _DatePageState extends State<DatePage> {
   bool isAM = true;
 
   Future<void> saveReminderTime() async {
-    String formattedTime =
-        "${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')} ${isAM ? 'AM' : 'PM'}";
+  String formattedTime =
+      "${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')} ${isAM ? 'AM' : 'PM'}";
 
-    // Debug: Print document ID and formatted time
-    print("Attempting to save reminder time for document ID: ${widget.documentId}");
-    print("Formatted time: $formattedTime");
+  try {
+    await FirebaseFirestore.instance
+        .collection('meds')
+        .doc(widget.documentId)
+        .update({
+      'reminderTime': formattedTime,
+    });
 
-    DocumentReference docRef =
-        FirebaseFirestore.instance.collection('meds').doc(widget.documentId);
-
-    try {
-      // Run a transaction to safely update or create the document.
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        DocumentSnapshot snapshot = await transaction.get(docRef);
-        if (snapshot.exists) {
-          // Update the existing document.
-          transaction.update(docRef, {'reminderTime': formattedTime});
-          print("Document exists; updating reminderTime.");
-        } else {
-          // Document doesn't exist; create it.
-          transaction.set(docRef, {'reminderTime': formattedTime});
-          print("Document did not exist; creating document with reminderTime.");
-        }
-      });
-
-      print("Reminder time saved successfully via transaction.");
-
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RefillRequest(
-              medicationName: widget.medicationName,
-              selectedUnit: widget.selectedUnit,
-              selectedFrequency: widget.selectedFrequency,
-              reminderTime: formattedTime,
-              documentId: widget.documentId, // Pass the document ID
-            ),
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RefillRequest(
+            medicationName: widget.medicationName,
+            selectedUnit: widget.selectedUnit,
+            selectedFrequency: widget.selectedFrequency,
+            reminderTime: formattedTime,
+            documentId: widget.documentId, // تمرير نفس documentId
           ),
-        );
-      }
-    } catch (e) {
-      print("Error saving reminder time: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving time: $e'),
-          backgroundColor: Colors.red,
         ),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error saving reminder time: $e'), backgroundColor: Colors.red),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

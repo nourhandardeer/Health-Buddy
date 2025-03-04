@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'FrequencySelectionPage.dart'; // Ensure this import is correct
+import 'FrequencySelectionPage.dart'; // Import Frequency Selection Page
 
 class MedicationDetailsPage extends StatefulWidget {
   final String medId;
 
-  const MedicationDetailsPage({Key? key, required this.medId})
-      : super(key: key);
+  const MedicationDetailsPage({Key? key, required this.medId}) : super(key: key);
 
   @override
   _MedicationDetailsPageState createState() => _MedicationDetailsPageState();
@@ -75,61 +74,6 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
     }
   }
 
-  Future<void> _deleteMedication() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('meds')
-          .doc(widget.medId)
-          .delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Medication deleted successfully!"),
-          backgroundColor: Colors.red,
-        ),
-      );
-      Navigator.of(context).pop(); // Navigate back after deletion
-    } catch (e) {
-      print("Error deleting medication: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to delete medication."),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  void _confirmDelete() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Delete Medication"),
-          content:
-              const Text("Are you sure you want to delete this medication?"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _deleteMedication();
-              },
-              child: const Text("Delete"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -178,6 +122,12 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
               value: "${medData!['unit'] ?? 'N/A'}",
               field: "unit",
             ),
+            _buildDropdownSection(
+              icon: Icons.fastfood,
+              title: "Intake Advice",
+              field: "intakeAdvice",
+              value: medData!['intakeAdvice'] ?? 'None',
+            ),
           ],
         ),
       ),
@@ -201,6 +151,57 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
       ),
     );
   }
+  void _confirmDelete() {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text("Delete Medication"),
+        content: const Text("Are you sure you want to delete this medication?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deleteMedication(); // Call the delete function
+            },
+            child: const Text("Delete"),
+          ),
+        ],
+      );
+    },
+  );
+}
+Future<void> _deleteMedication() async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('meds')
+        .doc(widget.medId)
+        .delete();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Medication deleted successfully!"),
+        backgroundColor: Colors.red,
+      ),
+    );
+    Navigator.of(context).pop(); // Navigate back after deletion
+  } catch (e) {
+    print("Error deleting medication: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Failed to delete medication."),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+
 
   Widget _buildSection({
     required IconData icon,
@@ -238,12 +239,61 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
           icon: const Icon(Icons.edit, color: Colors.blueAccent),
           onPressed: () {
             if (isFrequency) {
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(
-              //     builder: (context) => const FrequencySelectionPage(),
-              //   ),
-              // );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FrequencySelectionPage(
+                    initialFrequency: value,
+                    onSave: (newFrequency) {
+                      _updateData(field, newFrequency);
+                    },
+                  ),
+                ),
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownSection({
+    required IconData icon,
+    required String title,
+    required String field,
+    required String value,
+  }) {
+    List<String> intakeOptions = ["None", "Before Meal", "After Meal", "With Meal", "Custom"];
+    
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.blueAccent,
+          child: Icon(icon, color: Colors.white),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey[700],
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          items: intakeOptions.map((String option) {
+            return DropdownMenuItem<String>(
+              value: option,
+              child: Text(option),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            if (newValue != null) {
+              _updateData(field, newValue);
             }
           },
         ),
