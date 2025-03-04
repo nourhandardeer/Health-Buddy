@@ -28,7 +28,56 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
   }
+Future<void> takeMedication(String medId, Map<String, dynamic> medData) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
+    DateTime today = DateTime.now();
+    DateTime? lastTakenDate;
+    if (medData['lastTakenDate'] != null) {
+      lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
+    }
+
+    bool alreadyTakenToday =
+        lastTakenDate != null &&
+        lastTakenDate.year == today.year &&
+        lastTakenDate.month == today.month &&
+        lastTakenDate.day == today.day;
+
+    if (alreadyTakenToday) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("ypu have taken this mediction today")),
+      );
+      return;
+    }
+
+    int currentInventory = medData['currentInventory'] is String
+        ? int.tryParse(medData['currentInventory']) ?? 0
+        : medData['currentInventory'] ?? 0;
+    int dosage = medData['dosage'] is String
+        ? int.tryParse(medData['dosage']) ?? 1
+        : medData['dosage'] ?? 1;
+
+    if (currentInventory <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Out of stock! You need to refill.")),
+      );
+      return;
+    }
+
+    int updatedInventory = currentInventory - dosage;
+
+    await FirebaseFirestore.instance.collection('meds').doc(medId).update({
+      'currentInventory': updatedInventory,
+      'lastTakenDate': Timestamp.fromDate(today),
+    });
+
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("تم تناول الدواء! المتبقي: $updatedInventory")),
+    );
+  }
   Widget _buildTitle() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -69,128 +118,242 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Set<String> completedMedications = {};
 
-  Widget _buildMedicationsList() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const Center(
-        child: Text(
-          "Please log in to view medications.",
-          style: TextStyle(color: Colors.black),
-        ),
-      );
-    }
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('meds')
-          .where('userId', isEqualTo: user.uid)
-          .snapshots(),
-      builder: (context, medSnapshot) {
-        if (medSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (medSnapshot.hasError ||
-            !medSnapshot.hasData ||
-            medSnapshot.data!.docs.isEmpty) {
-          return const Center(
-              child: Text("No medications found",
-                  style: TextStyle(color: Colors.black)));
-        }
-        var medications = medSnapshot.data!.docs;
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: medications.length,
-          itemBuilder: (context, index) {
-            var med = medications[index];
-            var medData = med.data() as Map<String, dynamic>;
-            String medId = med.id;
-            bool isCompleted = completedMedications.contains(medId);
-            return Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+Widget _buildMedicationsList() {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    return const Center(
+      child: Text(
+        "Please log in to view medications.",
+        style: TextStyle(color: Colors.black),
+      ),
+    );
+  }
+
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('meds')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots(),
+    builder: (context, medSnapshot) {
+      if (medSnapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (medSnapshot.hasError || !medSnapshot.hasData || medSnapshot.data!.docs.isEmpty) {
+        return const Center(
+          child: Text("No medications found", style: TextStyle(color: Colors.black)),
+        );
+      }
+
+      var medications = medSnapshot.data!.docs;
+
+      return ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: medications.length,
+        itemBuilder: (context, index) {
+          var med = medications[index];
+          var medData = med.data() as Map<String, dynamic>;
+          String medId = med.id;
+
+          DateTime today = DateTime.now();
+          DateTime? lastTakenDate;
+          if (medData['lastTakenDate'] != null) {
+            lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
+          }
+
+          bool alreadyTakenToday = lastTakenDate != null &&
+              lastTakenDate.year == today.year &&
+              lastTakenDate.month == today.month &&
+              lastTakenDate.day == today.day;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: GestureDetector(
+              onTap: () => _showMedicationDetails(context, medId, medData), // Show modal on tap
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  border: Border.all(
+                    color: alreadyTakenToday ? Colors.blue : Colors.black,
+                    width: alreadyTakenToday ? 2 : 1,
+                  ),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.grey.shade300,
-                        blurRadius: 8,
-                        spreadRadius: 2)
-                  ],
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.medication,
-                        color: Colors.redAccent,
-                        size: 30,
-                      ),
-                    ),
+                    const Icon(Icons.medication, size: 30, color: Colors.black),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(medData['name'] ?? "Unknown",
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black)),
                           Text(
-                              "${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
-                              style: const TextStyle(
-                                  fontSize: 14, color: Colors.black)),
+                            medData['name'] ?? "Unknown",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              decoration: alreadyTakenToday ? TextDecoration.lineThrough : TextDecoration.none,
+                            ),
+                          ),
+                          Text(
+                            "${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
+                            style: TextStyle(
+                              fontSize: 14,
+                              decoration: alreadyTakenToday ? TextDecoration.lineThrough : TextDecoration.none,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     GestureDetector(
-                      onTap: () async {
-                        setState(() {
-                          if (isCompleted) {
-                            completedMedications.remove(medId);
-                          } else {
-                            completedMedications.add(medId);
-                          }
-                        });
-                        await FirebaseFirestore.instance
-                            .collection('meds')
-                            .doc(medId)
-                            .update({'completed': !isCompleted});
-                      },
+                      onTap: alreadyTakenToday ? null : () => takeMedication(medId, medData),
                       child: Container(
                         width: 26,
                         height: 26,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: Colors.redAccent, width: 2),
-                          color: isCompleted
-                              ? Colors.redAccent
-                              : Colors.transparent,
+                              color: alreadyTakenToday ? Colors.blue : Colors.black, width: 2),
+                          color: alreadyTakenToday ? Colors.blue : Colors.transparent,
                         ),
-                        child: isCompleted
-                            ? const Icon(Icons.check,
-                                color: Colors.white, size: 18)
+                        child: alreadyTakenToday
+                            ? const Icon(Icons.check, color: Colors.white, size: 18)
                             : null,
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+
+
+void _showMedicationDetails(BuildContext context, String medId, Map<String, dynamic> medData) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          width: MediaQuery.of(context).size.width * 0.85, // 85% of screen width
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Medication Icon
+                  const Icon(Icons.medical_services, size: 40, color: Colors.blue),
+
+                  // Delete Button (Trash Icon)
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red, size: 28),
+                    onPressed: () {
+                      _deleteMedication(medId, context); // Call delete function
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: Text(
+                  medData['name'] ?? "Unknown Medication",
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Center(
+                child: Text(
+                  "frequency: ${medData['frequency'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+                
+              ),
+              const SizedBox(height: 10),
+              
+
+              Center(
+                child: Text(
+                  "Scheduled at: ${medData['reminderTime'] ?? 'N/A'}",
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: Text(
+                  "unit: 1${medData['unit'] ?? 'pill(s)'}",
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // "Mark as Taken" Button
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    takeMedication(medId, medData);
+                    Navigator.pop(context); // Close modal after action
+                  },
+                  icon: const Icon(Icons.check),
+                  label: const Text("Mark as Taken"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // "Close" Button
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Close", style: TextStyle(color: Colors.black, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+void _deleteMedication(String medId, BuildContext context) async {
+  try {
+    await FirebaseFirestore.instance.collection('meds').doc(medId).delete();
+    Navigator.pop(context); // Close modal after deleting
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Medication deleted successfully!")),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error deleting medication: $e")),
     );
   }
+}
+
+
+
+
+
 
   @override
   Widget build(BuildContext context) {

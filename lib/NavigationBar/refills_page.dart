@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/Refills/refill_details.dart';
+// import 'refill_detail';
 
 class RefillsPage extends StatefulWidget {
-  const RefillsPage({super.key});
+  const RefillsPage({Key? key}) : super(key: key);
 
   @override
-  _RefillsState createState() => _RefillsState();
+  _RefillsPageState createState() => _RefillsPageState();
 }
 
-class _RefillsState extends State<RefillsPage> {
+class _RefillsPageState extends State<RefillsPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -25,68 +26,88 @@ class _RefillsState extends State<RefillsPage> {
       );
     }
 
-    final CollectionReference _refillsCollection = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('medications');
-
     return Scaffold(
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _refillsCollection.where('pillsLeft', isLessThanOrEqualTo: 5).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-
-          var documents = snapshot.data?.docs;
-          if (documents == null || documents.isEmpty) {
-            return const Center(child: Text("No refills needed"));
-          }
-
-          return ListView.separated(
-            itemCount: documents.length,
-            separatorBuilder: (context, index) =>
-                const Divider(thickness: 1, color: Colors.grey),
-            itemBuilder: (context, index) {
-              var data = documents[index].data() as Map<String, dynamic>;
-              return Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 15, horizontal: 20),
-                  leading: Image.asset("images/drugs.png",
-                      width: 50, height: 50, fit: BoxFit.cover),
-                  trailing: const Icon(Icons.notifications, size: 35),
-                  title: Text(
-                    data["name"] ?? "Unknown Medication",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Time: ${data["time"] ?? "Not set"}",
-                          style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                      Text("Pills left: ${data["pillsLeft"] ?? "N/A"}",
-                          style: const TextStyle(fontSize: 14, color: Colors.blue)),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RefillDetails(medData: data),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Refills Needed"),
       ),
+      body: _buildRefillsList(user.uid),
+    );
+  }
+
+  Widget _buildRefillsList(String userId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('meds')
+          .where('userId', isEqualTo: userId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text("Error: ${snapshot.error}"));
+        }
+
+        var documents = snapshot.data?.docs;
+        if (documents == null || documents.isEmpty) {
+          return const Center(child: Text("No refills needed"));
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: documents.length,
+          separatorBuilder: (context, index) =>
+              const Divider(thickness: 1, color: Colors.grey),
+          itemBuilder: (context, index) {
+            var data = documents[index].data() as Map<String, dynamic>;
+            String inventoryStr = data['currentInventory']?.trim() ?? '0';
+            int inventory = int.tryParse(inventoryStr) ?? 0;
+
+            return Card(
+              color: Colors.grey[200],
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: Image.asset(
+                  "images/drugs.png",
+                  width: 50,
+                  height: 50,
+                  fit: BoxFit.cover,
+                ),
+                trailing: const Icon(Icons.notifications, size: 35),
+                title: Text(
+                  data["name"] ?? "Unknown Medication",
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Current Inventory: ${inventory} ${data["unit"] ?? ""}",
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                    Text(
+                      "Reminder Time: ${data["reminderTime"] ?? "Not set"}",
+                      style: const TextStyle(fontSize: 14, color: Colors.blue),
+                    ),
+                  ],
+                ),
+                // onTap: () {
+                //   Navigator.push(
+                //     context,
+                //     MaterialPageRoute(
+                //       builder: (context) => RefillDetails(medData: data),
+                //     ),
+                //   );
+                // },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

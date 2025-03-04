@@ -238,12 +238,12 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
           icon: const Icon(Icons.edit, color: Colors.blueAccent),
           onPressed: () {
             if (isFrequency) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FrequencySelectionPage(),
-                ),
-              );
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(
+              //     builder: (context) => const FrequencySelectionPage(),
+              //   ),
+              // );
             }
           },
         ),
