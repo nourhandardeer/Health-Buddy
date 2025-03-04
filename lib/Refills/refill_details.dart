@@ -39,16 +39,16 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
       _currentPosition = position;
     });
   }
+Future<void> _openGoogleMaps() async {
+  if (_currentPosition == null) return;
+  String url =
+      "https://www.google.com/maps/search/pharmacy/@${_currentPosition!.latitude},${_currentPosition!.longitude},14z";
 
-  Future<void> _openGoogleMaps() async {
-    if (_currentPosition == null) return;
-    String url =
-        "https://www.google.com/maps/search/pharmacy/@${_currentPosition!.latitude},${_currentPosition!.longitude},14z";
-
-    if (await canLaunch(url)) {
-      await launch(url);
-    }
+  if (await canLaunchUrl(Uri.parse(url))) {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -123,8 +123,9 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                           ),
                         },
                         onMapCreated: (GoogleMapController controller) {
-                          _mapController = controller;
-                        },
+                            setState(() {
+                           _mapController = controller;
+                    });                        },
                       ),
                     ),
                   ),
@@ -163,26 +164,27 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blue),
-          const SizedBox(width: 10),
-          Text(
-            "$title: ",
-            style: const TextStyle(fontWeight: FontWeight.bold),
+ Widget _buildDetailRow(IconData icon, String title, dynamic value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      children: [
+        Icon(icon, color: Colors.blue),
+        const SizedBox(width: 10),
+        Text(
+          "$title: ",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        Expanded(
+          child: Text(
+            value?.toString() ?? "Not available",  // Convert value to string
+            style: const TextStyle(color: Colors.black54),
+            overflow: TextOverflow.ellipsis,
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(color: Colors.black54),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 }
