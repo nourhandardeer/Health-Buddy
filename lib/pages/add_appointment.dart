@@ -67,7 +67,7 @@ class _AddAppointmentState extends State<AddAppointment> {
         );
         return;
       }
-     String uid = user.uid;
+      String uid = user.uid;
 
       QuerySnapshot emergencyContactsSnapshot = await _firestore
           .collection('users')
@@ -88,8 +88,8 @@ class _AddAppointmentState extends State<AddAppointment> {
             .where('phone', whereIn: emergencyContacts)
             .get();
 
-        emergencyUserIds = emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
-
+        emergencyUserIds =
+            emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
       }
       //Finds users who have the same phone number as the Logged-in User
       QuerySnapshot reverseEmergencyContactsSnapshot = await _firestore
@@ -145,10 +145,10 @@ class _AddAppointmentState extends State<AddAppointment> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Appointment saved successfully!')),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const ManagePage()),
-      );
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      ;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
