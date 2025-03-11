@@ -294,11 +294,6 @@ Widget _buildMedicationsList() {
 
 
 
-
-
-
-
-
 void _showMedicationDetails(BuildContext context, String medId, Map<String, dynamic> medData) {
   DateTime now = DateTime.now();
   DateTime today = DateTime(now.year, now.month, now.day);

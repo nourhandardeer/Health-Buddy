@@ -236,7 +236,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         subtitle:
-                        Text('${contact["relation"]} - ${contact["phone"]}'),
+                        Text('${contact["phone"]}'),
                         trailing: IconButton(
                           icon: Icon(Icons.delete, color: Colors.red),
                           onPressed: () =>
