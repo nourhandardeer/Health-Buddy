@@ -7,7 +7,7 @@ class DatePage extends StatefulWidget {
   final String medicationName;
   final String selectedUnit;
   final String selectedFrequency;
-  final String documentId; // Receive document ID
+  final String documentId;
 
   const DatePage({
     Key? key,
@@ -22,23 +22,114 @@ class DatePage extends StatefulWidget {
 }
 
 class _DatePageState extends State<DatePage> {
-  int selectedHour = 8;
-  int selectedMinute = 0;
-  bool isAM = true;
+  // Time pickers
+  List<int> selectedHours = [];
+  List<int> selectedMinutes = [];
+  List<bool> isAMs = [];
 
-  Future<void> saveReminderTime() async {
-  String formattedTime =
-      "${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')} ${isAM ? 'AM' : 'PM'}";
+  // Days of the week
+  final List<String> daysOfWeek = [
+    'Saturday',
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+  ];
+  Set<String> selectedDays = {};
+  String? selectedSingleDay;
 
-  try {
-    await FirebaseFirestore.instance
-        .collection('meds')
-        .doc(widget.documentId)
-        .update({
-      'reminderTime': formattedTime,
-    });
+  // Recurring picker
+  int recurringValue = 1;
 
-    if (mounted) {
+  @override
+  void initState() {
+    super.initState();
+    setupTimePickers();
+  }
+
+  void setupTimePickers() {
+    int reminders = 1;
+    if (widget.selectedFrequency == "Once a day") reminders = 1;
+    if (widget.selectedFrequency == "Twice a day") reminders = 2;
+    if (widget.selectedFrequency == "3 times a day") reminders = 3;
+
+    selectedHours = List.filled(reminders, 8);
+    selectedMinutes = List.filled(reminders, 0);
+    isAMs = List.filled(reminders, true);
+  }
+
+  bool get isReminderSelection =>
+      widget.selectedFrequency == "Once a day" ||
+      widget.selectedFrequency == "Twice a day" ||
+      widget.selectedFrequency == "3 times a day";
+
+  bool get isOnceAWeek => widget.selectedFrequency == "Once a week";
+
+  bool get isSpecificDays =>
+      widget.selectedFrequency == "Specific days of the week";
+
+  bool get isRecurringDays =>
+      widget.selectedFrequency.contains("Every X days");
+
+  bool get isRecurringWeeks =>
+      widget.selectedFrequency.contains("Every X weeks");
+
+  bool get isRecurringMonths =>
+      widget.selectedFrequency.contains("Every X months");
+
+  String get recurringType {
+    if (isRecurringDays) return "Days";
+    if (isRecurringWeeks) return "Weeks";
+    if (isRecurringMonths) return "Months";
+    return "";
+  }
+
+  List<int> getRecurringValues() {
+    if (isRecurringDays) return List.generate(30, (i) => i + 1);
+    if (isRecurringWeeks) return List.generate(12, (i) => i + 1);
+    if (isRecurringMonths) return List.generate(12, (i) => i + 1);
+    return [];
+  }
+
+  Future<void> saveSelection() async {
+    try {
+      Map<String, dynamic> dataToSave = {'timestamp': FieldValue.serverTimestamp()};
+
+      if (isReminderSelection) {
+        for (int i = 0; i < selectedHours.length; i++) {
+          String formattedTime =
+              "${selectedHours[i].toString().padLeft(2, '0')}:${selectedMinutes[i].toString().padLeft(2, '0')} ${isAMs[i] ? 'AM' : 'PM'}";
+          dataToSave['reminderTime${i + 1}'] = formattedTime;
+        }
+      } else if (isOnceAWeek) {
+        if (selectedSingleDay == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select a day!')),
+          );
+          return;
+        }
+        dataToSave['onceAWeekDay'] = selectedSingleDay;
+      } else if (isSpecificDays) {
+        if (selectedDays.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select at least one day!')),
+          );
+          return;
+        }
+        dataToSave['specificDays'] = selectedDays.toList();
+      } else if (recurringType.isNotEmpty) {
+        dataToSave['recurringFrequency'] = "Every $recurringValue $recurringType";
+        dataToSave['recurringValue'] = recurringValue;
+        dataToSave['recurringType'] = recurringType;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('meds')
+          .doc(widget.documentId)
+          .update(dataToSave);
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -46,131 +137,178 @@ class _DatePageState extends State<DatePage> {
             medicationName: widget.medicationName,
             selectedUnit: widget.selectedUnit,
             selectedFrequency: widget.selectedFrequency,
-            reminderTime: formattedTime,
-            documentId: widget.documentId, // تمرير نفس documentId
+            reminderTime: dataToSave.toString(),
+            documentId: widget.documentId,
           ),
         ),
       );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving: $e')),
+      );
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error saving reminder time: $e'), backgroundColor: Colors.red),
-    );
   }
-}
 
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Select Reminder Time"),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+  Widget buildReminderPickers() {
+    return ListView.builder(
+      itemCount: selectedHours.length,
+      itemBuilder: (context, index) {
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "When would you like to be reminded?",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            // Time Picker Row
+            Text("Reminder ${index + 1}", style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Hours Picker (1-12)
                 Expanded(
                   child: CupertinoPicker(
-                    scrollController:
-                        FixedExtentScrollController(initialItem: selectedHour - 1),
+                    scrollController: FixedExtentScrollController(initialItem: selectedHours[index] - 1),
                     itemExtent: 32.0,
-                    onSelectedItemChanged: (int index) {
-                      setState(() {
-                        selectedHour = index + 1;
-                      });
+                    onSelectedItemChanged: (hourIndex) {
+                      setState(() => selectedHours[index] = hourIndex + 1);
                     },
-                    children: List<Widget>.generate(
-                      12,
-                      (int index) => Center(
-                        child: Text((index + 1).toString().padLeft(2, '0')),
-                      ),
-                    ),
+                    children: List.generate(12, (index) => Center(child: Text((index + 1).toString().padLeft(2, '0')))),
                   ),
                 ),
-                // Colon separator
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text(":", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ),
-                // Minutes Picker (increments of 5)
+                const Text(":", style: TextStyle(fontSize: 20)),
                 Expanded(
                   child: CupertinoPicker(
-                    scrollController:
-                        FixedExtentScrollController(initialItem: selectedMinute ~/ 5),
+                    scrollController: FixedExtentScrollController(initialItem: selectedMinutes[index] ~/ 5),
                     itemExtent: 32.0,
-                    onSelectedItemChanged: (int index) {
-                      setState(() {
-                        selectedMinute = index * 5;
-                      });
+                    onSelectedItemChanged: (minuteIndex) {
+                      setState(() => selectedMinutes[index] = minuteIndex * 5);
                     },
-                    children: List<Widget>.generate(
-                      12,
-                      (int index) => Center(
-                        child: Text((index * 5).toString().padLeft(2, '0')),
-                      ),
-                    ),
+                    children: List.generate(12, (index) => Center(child: Text((index * 5).toString().padLeft(2, '0')))),
                   ),
                 ),
-                // AM/PM Selector
                 SizedBox(
                   width: 100,
                   child: CupertinoSegmentedControl<bool>(
-                    groupValue: isAM,
+                    groupValue: isAMs[index],
                     children: const {
-                      true: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text("AM"),
-                      ),
-                      false: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text("PM"),
-                      ),
+                      true: Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("AM")),
+                      false: Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("PM")),
                     },
-                    onValueChanged: (bool value) {
-                      setState(() {
-                        isAM = value;
-                      });
+                    onValueChanged: (bool val) {
+                      setState(() => isAMs[index] = val);
                     },
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 30),
           ],
+        );
+      },
+    );
+  }
+
+  Widget buildSingleDayPicker() {
+    return ListView.builder(
+      itemCount: daysOfWeek.length,
+      itemBuilder: (context, index) {
+        final day = daysOfWeek[index];
+        final isSelected = selectedSingleDay == day;
+
+        return ListTile(
+          title: Text(day),
+          trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+          onTap: () => setState(() => selectedSingleDay = day),
+        );
+      },
+    );
+  }
+
+  Widget buildMultiDayPicker() {
+    return ListView.builder(
+      itemCount: daysOfWeek.length,
+      itemBuilder: (context, index) {
+        final day = daysOfWeek[index];
+        final isSelected = selectedDays.contains(day);
+
+        return ListTile(
+          title: Text(day),
+          trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                selectedDays.remove(day);
+              } else {
+                selectedDays.add(day);
+              }
+            });
+          },
+        );
+      },
+    );
+  }
+
+  Widget buildRecurringPicker() {
+    final pickerValues = getRecurringValues();
+
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        const Text("Every", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 150,
+          child: CupertinoPicker(
+            scrollController: FixedExtentScrollController(initialItem: 0),
+            itemExtent: 50.0,
+            onSelectedItemChanged: (index) {
+              setState(() => recurringValue = pickerValues[index]);
+            },
+            children: pickerValues.map((value) => Center(child: Text(value.toString(), style: const TextStyle(fontSize: 24, color: Colors.blue)))).toList(),
+          ),
         ),
+        const SizedBox(height: 20),
+        Text(
+          recurringType == 'Days' ? "Day(s)" : recurringType == 'Weeks' ? "Week(s)" : "Month(s)",
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bodyWidget;
+
+    if (isReminderSelection) {
+      bodyWidget = buildReminderPickers();
+    } else if (isOnceAWeek) {
+      bodyWidget = buildSingleDayPicker();
+    } else if (isSpecificDays) {
+      bodyWidget = buildMultiDayPicker();
+    } else if (recurringType.isNotEmpty) {
+      bodyWidget = buildRecurringPicker();
+    } else {
+      bodyWidget = const Center(child: Text("No option selected"));
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Date & Time"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
       ),
-      // Save & Next Button
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: bodyWidget,
+      ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: SizedBox(
-          width: double.infinity,
-          height: 60,
-          child: ElevatedButton(
-            onPressed: saveReminderTime,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              "Next",
-              style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+        child: ElevatedButton(
+          onPressed: saveSelection,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
+          child: const Text("Next", style: TextStyle(fontSize: 18, color: Colors.white)),
         ),
       ),
     );

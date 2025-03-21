@@ -29,6 +29,7 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   device_preview: ^1.2.0
+  table_calendar: ^3.0.9
 
   flutter:
     sdk: flutter
@@ -73,7 +74,6 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-     - images/photo1.png
      - images/photo2.png
      - images/photo3.png
      - images/drugs.png

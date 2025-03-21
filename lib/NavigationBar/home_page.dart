@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -11,7 +10,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
   /// Store completed medications
   Set<String> completedMedications = {};
 
@@ -176,25 +174,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Image.asset(
-          'images/photo1.png',
-          width: double.infinity,
-          height: 250,
-          fit: BoxFit.cover,
-        ),
-        const SizedBox(height: 16), // Reduced space
-        Expanded(  // This makes the list take up the remaining space
-          child: SingleChildScrollView(
-            child: _buildMedicationsList(),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 16.0),
+        child: _buildMedicationsList(),
+      ),
+    );
+  }
 }

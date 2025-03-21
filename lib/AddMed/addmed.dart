@@ -133,6 +133,7 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
               medicationName: medicationController.text,
               selectedUnit: selectedUnit!,
               documentId: docId,
+              startDate: '',
             ),
           ),
         );
