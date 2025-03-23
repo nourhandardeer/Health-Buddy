@@ -326,73 +326,44 @@ class _HomeScreenState extends State<HomeScreen> {
                             decoration: BoxDecoration(
                               color: Colors.redAccent.withOpacity(0.2),
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: alreadyTakenToday ? Colors.blue : Colors.black,
+                                  width: 2),
+                              color: alreadyTakenToday ? Colors.blue : Colors.transparent,
                             ),
-                            child: const Icon(Icons.medication, color: Colors.redAccent, size: 30),
+                            child: alreadyTakenToday
+                                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                                : null,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(medData['name'] ?? "Unknown",
-                                    style: const TextStyle(
-                                        fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
-                                Text("${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
-                                    style: const TextStyle(fontSize: 14, color: Colors.black)),
-                                const SizedBox(height: 4),
-                                Text("Frequency: ${medData['frequency'] ?? 'N/A'}",
-                                    style: const TextStyle(fontSize: 14, color: Colors.black54)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+                ),
+              );
+            },
+          );
+        },
+      );
+    },
+  );
+}
 
-  bool isTodaySelected() {
-    final today = DateTime.now();
-    return _selectedDay == null
-        ? isSameDay(_focusedDay, today)
-        : isSameDay(_selectedDay!, today);
-  }
 
-  String getDayName(int weekday) {
-    switch (weekday) {
-      case DateTime.monday:
-        return 'Monday';
-      case DateTime.tuesday:
-        return 'Tuesday';
-      case DateTime.wednesday:
-        return 'Wednesday';
-      case DateTime.thursday:
-        return 'Thursday';
-      case DateTime.friday:
-        return 'Friday';
-      case DateTime.saturday:
-        return 'Saturday';
-      case DateTime.sunday:
-        return 'Sunday';
-      default:
-        return '';
-    }
-  }
 
-  String formatReminderTime(String time) {
-    if (time.isEmpty) return "";
-    time = time.toUpperCase();
-    if (time.contains('AM') || time.contains('PM')) {
-      time = time.replaceAll('AM', ' AM').replaceAll('PM', ' PM');
-    }
-    return time.trim();
+
+
+
+
+
+
+void _showMedicationDetails(BuildContext context, String medId, Map<String, dynamic> medData) {
+  DateTime now = DateTime.now();
+  DateTime today = DateTime(now.year, now.month, now.day);
+  DateTime? lastTakenDate;
+
+  if (medData['lastTakenDate'] != null) {
+    lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
   }
 
   Future<void> loadTakenMedsForToday() async {

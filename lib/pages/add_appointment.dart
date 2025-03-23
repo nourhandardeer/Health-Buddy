@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:intl/intl.dart';
 import 'package:graduation_project/home.dart';
 
@@ -66,9 +67,67 @@ class _AddAppointmentState extends State<AddAppointment> {
         );
         return;
       }
+      String uid = user.uid;
 
-      await _firestore.collection('appointments').add({
-        'userId': user.uid,
+      QuerySnapshot emergencyContactsSnapshot = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('emergencyContacts')
+          .get();
+
+      List<String> emergencyContacts = emergencyContactsSnapshot.docs
+          .map((doc) => doc['phone'] as String)
+          .toList();
+
+      List<String> emergencyUserIds = [];
+
+      //searches in users collection
+      if (emergencyContacts.isNotEmpty) {
+        QuerySnapshot emergencyUsersSnapshot = await _firestore
+            .collection('users')
+            .where('phone', whereIn: emergencyContacts)
+            .get();
+
+        emergencyUserIds =
+            emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
+      }
+      //Finds users who have the same phone number as the Logged-in User
+      QuerySnapshot reverseEmergencyContactsSnapshot = await _firestore
+          .collection('users')
+          .where('phone', isEqualTo: user.phoneNumber)
+          .get();
+
+      for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
+        String originalUserId = reverseDoc.id;
+        if (originalUserId == uid) continue;
+
+        //users/userid/emergencyContact
+        QuerySnapshot originalUserEmergencyContactsSnapshot = await _firestore
+            .collection('users')
+            .doc(originalUserId)
+            .collection('emergencyContacts')
+            .where('phone', isEqualTo: user.phoneNumber)
+            .get();
+
+        if (originalUserEmergencyContactsSnapshot.docs.isNotEmpty) {
+          emergencyUserIds.add(originalUserId);
+        }
+      }
+      // await _firestore.collection('appointments').add({
+      //   'userId': uid,
+      //   'doctorName': doctorNameController.text,
+      //   'doctorPhone': doctorPhoneController.text,
+      //   'specialty': specialtyController.text,
+      //   'location': locationController.text,
+      //   'notes': notesController.text,
+      //   'appointmentDate': DateFormat('yyyy-MM-dd').format(selectedDate!),
+      //   'appointmentTime': selectedTime!.format(context),
+      //   'createdAt': FieldValue.serverTimestamp(),
+      //   'linkedFrom': uid,
+      //
+      // });
+      Map<String, dynamic> appointmentData = {
+        'userId': uid,
         'doctorName': doctorNameController.text,
         'doctorPhone': doctorPhoneController.text,
         'specialty': specialtyController.text,
@@ -77,15 +136,19 @@ class _AddAppointmentState extends State<AddAppointment> {
         'appointmentDate': DateFormat('yyyy-MM-dd').format(selectedDate!),
         'appointmentTime': selectedTime!.format(context),
         'createdAt': FieldValue.serverTimestamp(),
-      });
+        'linkedUsers': [uid, ...emergencyUserIds], // Store all linked users
+      };
+
+      // Save appointment in the top-level `appointments` collection
+      await _firestore.collection('appointments').add(appointmentData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Appointment saved successfully!')),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      ;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
