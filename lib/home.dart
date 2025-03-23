@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/NavigationBar/home_page.dart';
+import 'package:table_calendar/table_calendar.dart';
+
 import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:graduation_project/NavigationBar/medications_page.dart';
 import 'package:graduation_project/NavigationBar/refills_page.dart';
@@ -10,435 +12,462 @@ import 'package:graduation_project/pages/settings_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  final List<Widget> _pages = [
-    const HomePage(),
-    const RefillsPage(),
-    const MedicationsPage(),
-    const ManagePage(),
-  ];
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  Map<String, bool> _medTakenStatus = {};
 
-  void _onItemTapped(int index) {
+  @override
+  void initState() {
+    super.initState();
+    loadTakenMedsForToday();
+  }
+
+  void _onNavItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
-Future<void> takeMedication(String medId, Map<String, dynamic> medData) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
 
-    DateTime now = DateTime.now();
-    DateTime today = DateTime(now.year, now.month, now.day); // Remove time details
-    DateTime? lastTakenDate;
-
-    if (medData['lastTakenDate'] != null) {
-        lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
-    }
-
-    bool alreadyTakenToday =
-        lastTakenDate != null &&
-        lastTakenDate.year == today.year &&
-        lastTakenDate.month == today.month &&
-        lastTakenDate.day == today.day;
-
-    if (alreadyTakenToday) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("You have already taken this medication today.")),
-        );
-        return;
-    }
-
-    // ✅ Handle inventory (if exists)
-    bool hasInventory = medData.containsKey('currentInventory') && medData['currentInventory'] != null;
-    if (hasInventory) {
-        int currentInventory = medData['currentInventory'] is String
-            ? int.tryParse(medData['currentInventory']) ?? 0
-            : medData['currentInventory'] ?? 0;
-        int dosage = medData['dosage'] is String
-            ? int.tryParse(medData['dosage']) ?? 1
-            : medData['dosage'] ?? 1;
-
-        if (currentInventory <= 0) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Out of stock! You need to refill.")),
-            );
-            return;
-        }
-
-        int updatedInventory = currentInventory - dosage;
-
-        await FirebaseFirestore.instance.collection('meds').doc(medId).update({
-            'currentInventory': updatedInventory,
-            'lastTakenDate': Timestamp.fromDate(today), // Save only the date
-        });
-
-    } else {
-        await FirebaseFirestore.instance.collection('meds').doc(medId).update({
-            'lastTakenDate': Timestamp.fromDate(today), // Save only the date
-        });
-    }
-
-    setState(() {});
-
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Medication has been taken!")),
-    );
-}
-
-
-  Widget _buildTitle() {
+  // ================ user name===================
+  Widget _buildUserName() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Text(
-        'Guest',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      );
+      return const Text('Guest',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
     }
+
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Text(
-            'Loading...',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          );
+          return const Text('Loading...',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
         } else if (snapshot.hasError) {
-          return const Text(
-            'Error',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          );
-        } else if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Text(
-            'User',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          );
-        } else {
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          final fullName = "${data['firstName']} ${data['lastName']}";
-          return Text(
-            fullName,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          );
+          return const Text('Error',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
         }
+
+        final document = snapshot.data;
+
+        if (document == null || !document.exists) {
+          return const Text('User',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
+        }
+
+        final data = document.data() as Map<String, dynamic>;
+        final fullName = "${data['firstName']} ${data['lastName']}";
+
+        return Text(fullName,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
       },
     );
   }
 
-  Set<String> completedMedications = {};
+  // ================ Calendar ===================
+  Widget _buildCalendar() {
+    return TableCalendar(
+      firstDay: DateTime.utc(2020, 1, 1),
+      lastDay: DateTime.utc(2030, 12, 31),
+      focusedDay: _focusedDay,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+      },
+      calendarFormat: CalendarFormat.week,
+      startingDayOfWeek: StartingDayOfWeek.saturday,
+      headerVisible: false,
+    );
+  }
+  
+  Stream<QuerySnapshot> fetchAppointmentsCollection() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print("No user found");
+      return const Stream.empty();
+    }
 
-Widget _buildMedicationsList() {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    return const Center(
-      child: Text(
-        "Please log in to view medications.",
-        style: TextStyle(color: Colors.black),
-      ),
+    return FirebaseFirestore.instance
+        .collection('appointments')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
+  }
+
+  Widget _buildAppointmentsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: fetchAppointmentsCollection(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          print('Appointments Error: ${snapshot.error}');
+          return const Center(child: Text("Error loading appointments"));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No appointments found"));
+        }
+
+        var appointments = snapshot.data!.docs;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: appointments.length,
+          itemBuilder: (context, index) {
+            var appointment = appointments[index];
+            var data = appointment.data() as Map<String, dynamic>;
+
+            String appointmentDate = data['appointmentDate'] ?? 'N/A';
+            String appointmentTime = data['appointmentTime'] ?? 'N/A';
+            String doctorName = data['doctorName'] ?? 'N/A';
+            // String location = data['location'] ?? 'N/A';
+            String specialty = data['specialty'] ?? 'N/A';
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.shade300,
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.calendar_month, size: 40, color: Colors.blue),
+                  title: Text("Dr. $doctorName"),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Date: $appointmentDate"),
+                      Text("Time: $appointmentTime"),
+                      // Text("Location: $location"),
+                      Text("Specialty: $specialty"),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  return FutureBuilder<DocumentSnapshot>(
-    future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-    builder: (context, userSnapshot) {
-      if (userSnapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (userSnapshot.hasError || !userSnapshot.hasData || !userSnapshot.data!.exists) {
-        return const Center(
-          child: Text("Error loading user data", style: TextStyle(color: Colors.red)),
-        );
-      }
-
-      var userData = userSnapshot.data!.data() as Map<String, dynamic>;
-
-      List<String> emergencyUserIds = (userData['emergencyContacts'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [];
-
-      return FutureBuilder<List<QuerySnapshot>>(
-        future: Future.wait([
-          FirebaseFirestore.instance
-              .collection('meds')
-              .where('userId', isEqualTo: user.uid)
-              .get(),
-          FirebaseFirestore.instance
-              .collection('meds')
-              .where('originalUserEmergencyContacts', arrayContains: user.uid)
-              .get(),
-          FirebaseFirestore.instance
-              .collection('meds')
-              .where('emergencyUserIds', arrayContains: user.uid)
-              .get(),
-        ]),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(
-              child: Text("Error loading medications", style: TextStyle(color: Colors.red)),
-            );
-          }
-
-          List<QueryDocumentSnapshot> medications = [
-            ...snapshot.data![0].docs,
-            ...snapshot.data![1].docs,
-            ...snapshot.data![2].docs
-          ];
-
-          if (medications.isEmpty) {
-            return const Center(
-              child: Text("No medications found", style: TextStyle(color: Colors.black)),
-            );
-          }
-
-          return ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: medications.length,
-            itemBuilder: (context, index) {
-              var med = medications[index];
-              var medData = med.data() as Map<String, dynamic>;
-              String medId = med.id;
-
-              DateTime today = DateTime.now();
-              DateTime? lastTakenDate;
-              if (medData['lastTakenDate'] != null) {
-                lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
-              }
-
-              bool alreadyTakenToday = lastTakenDate != null &&
-                  lastTakenDate.year == today.year &&
-                  lastTakenDate.month == today.month &&
-                  lastTakenDate.day == today.day;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: GestureDetector(
-                  onTap: () => _showMedicationDetails(context, medId, medData),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: alreadyTakenToday ? Colors.blue : Colors.black,
-                        width: alreadyTakenToday ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.medication, size: 30, color: Colors.black),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                medData['name'] ?? "Unknown",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: alreadyTakenToday
-                                      ? TextDecoration.lineThrough
-                                      : TextDecoration.none,
-                                ),
-                              ),
-                              Text(
-                                "${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  decoration: alreadyTakenToday
-                                      ? TextDecoration.lineThrough
-                                      : TextDecoration.none,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: alreadyTakenToday ? null : () => takeMedication(medId, medData),
-                          child: Container(
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: alreadyTakenToday ? Colors.blue : Colors.black,
-                                  width: 2),
-                              color: alreadyTakenToday ? Colors.blue : Colors.transparent,
-                            ),
-                            child: alreadyTakenToday
-                                ? const Icon(Icons.check, color: Colors.white, size: 18)
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      );
-    },
-  );
-}
-
-
-
-
-void _showMedicationDetails(BuildContext context, String medId, Map<String, dynamic> medData) {
-  DateTime now = DateTime.now();
-  DateTime today = DateTime(now.year, now.month, now.day);
-  DateTime? lastTakenDate;
-
-  if (medData['lastTakenDate'] != null) {
-    lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
-  }
-
-  String takenAtText = "Not yet taken";
-  if (lastTakenDate != null) {
-    if (lastTakenDate.year == today.year &&
-        lastTakenDate.month == today.month &&
-        lastTakenDate.day == today.day) {
-      // Show only the time if taken today
-      takenAtText = "${lastTakenDate.hour.toString().padLeft(2, '0')}:${lastTakenDate.minute.toString().padLeft(2, '0')}";
-    } else {
-      // Show only the date if taken on a previous day
-      takenAtText = "${lastTakenDate.year}-${lastTakenDate.month.toString().padLeft(2, '0')}-${lastTakenDate.day.toString().padLeft(2, '0')}";
+  // ================ Medications ===================
+  Stream<QuerySnapshot> fetchMedsCollectionAll() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Stream.empty();
     }
+
+    return FirebaseFirestore.instance
+        .collection('meds')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots();
   }
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          width: MediaQuery.of(context).size.width * 0.85,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildMedicationsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: fetchMedsCollectionAll(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text("Error loading medications"));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No medications found"));
+        }
+
+        var medications = snapshot.data!.docs;
+
+        String selectedDayName = _selectedDay != null
+            ? getDayName(_selectedDay!.weekday).toLowerCase()
+            : getDayName(_focusedDay.weekday).toLowerCase();
+
+        var filteredMeds = medications.where((doc) {
+          var medData = doc.data() as Map<String, dynamic>;
+
+          String? frequency = medData['frequency'];
+          List<dynamic>? specificDays = medData['specificDays'];
+          String? recurringType = medData['recurringType'];
+          int? recurringValue = medData['recurringValue'];
+
+          if (frequency != null && frequency.isNotEmpty) {
+            String freq = frequency.toLowerCase();
+            if (freq == 'once a day' || freq == 'twice a day' || freq == '3 times a day') {
+              return true;
+            }
+            if (freq == 'once a week') {
+              String onceAWeekDay = (medData['onceAWeekDay'] ?? '').toString().toLowerCase();
+              return onceAWeekDay == selectedDayName;
+            }
+            return false;
+          }
+
+          if (specificDays != null && specificDays.isNotEmpty) {
+            String today = getDayName((_selectedDay ?? _focusedDay).weekday);
+            return specificDays.contains(today);
+          }
+
+          if (recurringType != null && recurringValue != null) {
+            if (medData['startDate'] == null) {
+              return false;
+            }
+
+            DateTime startDate = (medData['startDate'] as Timestamp).toDate();
+            DateTime selectedDate = _selectedDay ?? _focusedDay;
+            Duration diff = selectedDate.difference(startDate);
+            int diffValue = 0;
+
+            switch (recurringType.toLowerCase()) {
+              case 'day':
+                diffValue = diff.inDays;
+                break;
+              case 'week':
+                diffValue = (diff.inDays / 7).floor();
+                break;
+              case 'month':
+                diffValue = ((selectedDate.year - startDate.year) * 12 +
+                    selectedDate.month -
+                    startDate.month);
+                break;
+              default:
+                return false;
+            }
+
+            return diffValue >= 0 && diffValue % recurringValue == 0;
+          }
+
+          return false;
+        }).toList();
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: filteredMeds.length,
+          itemBuilder: (context, index) {
+            var med = filteredMeds[index];
+            var medData = med.data() as Map<String, dynamic>;
+
+            String rawTime = medData['reminderTime1'] ?? "";
+            String timeText = formatReminderTime(rawTime);
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.medical_services, size: 40, color: Colors.blue),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red, size: 28),
-                    onPressed: () {
-                      _deleteMedication(medId, context);
-                    },
+                  Column(
+                    children: [
+                      Text(
+                        timeText,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (isTodaySelected())
+                        Checkbox(
+                          value: _medTakenStatus[med.id] ?? false,
+                          onChanged: (_medTakenStatus[med.id] ?? false)
+                              ? null
+                              : (bool? value) async {
+                                  if (value == null || !value) return;
+
+                                  setState(() {
+                                    _medTakenStatus[med.id] = true;
+                                  });
+
+                                  final dosageStr = medData['dosage'].toString();
+                                  await markMedicationAsTaken(med.id, dosageStr);
+                                },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade300,
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.medication, color: Colors.redAccent, size: 30),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(medData['name'] ?? "Unknown",
+                                    style: const TextStyle(
+                                        fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                                Text("${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
+                                    style: const TextStyle(fontSize: 14, color: Colors.black)),
+                                const SizedBox(height: 4),
+                                Text("Frequency: ${medData['frequency'] ?? 'N/A'}",
+                                    style: const TextStyle(fontSize: 14, color: Colors.black54)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  medData['name'] ?? "Unknown Medication",
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Center(
-                child: Text(
-                  "Frequency: ${medData['frequency'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  "Scheduled at: ${medData['reminderTime'] ?? 'N/A'}",
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  "Taken at: $takenAtText",
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Center(
-                child: Text(
-                  "Unit: ${medData['unit'] ?? 'pill(s)'}",
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  "Intake Advice: ${medData['intakeAdvice'] ?? ''}",
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    takeMedication(medId, medData);
-                    Navigator.pop(context);
-                  },
-                  icon: const Icon(Icons.check),
-                  label: const Text("Mark as Taken"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Close", style: TextStyle(color: Colors.black, fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-
-
-void _deleteMedication(String medId, BuildContext context) async {
-  try {
-    await FirebaseFirestore.instance.collection('meds').doc(medId).delete();
-    Navigator.pop(context); // Close modal after deleting
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Medication deleted successfully!")),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error deleting medication: $e")),
+            );
+          },
+        );
+      },
     );
   }
-}
 
+  bool isTodaySelected() {
+    final today = DateTime.now();
+    return _selectedDay == null
+        ? isSameDay(_focusedDay, today)
+        : isSameDay(_selectedDay!, today);
+  }
 
+  String getDayName(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Monday';
+      case DateTime.tuesday:
+        return 'Tuesday';
+      case DateTime.wednesday:
+        return 'Wednesday';
+      case DateTime.thursday:
+        return 'Thursday';
+      case DateTime.friday:
+        return 'Friday';
+      case DateTime.saturday:
+        return 'Saturday';
+      case DateTime.sunday:
+        return 'Sunday';
+      default:
+        return '';
+    }
+  }
 
+  String formatReminderTime(String time) {
+    if (time.isEmpty) return "";
+    time = time.toUpperCase();
+    if (time.contains('AM') || time.contains('PM')) {
+      time = time.replaceAll('AM', ' AM').replaceAll('PM', ' PM');
+    }
+    return time.trim();
+  }
 
+  Future<void> loadTakenMedsForToday() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
+    final now = DateTime.now();
+    final todayDate = "${now.year}-${now.month}-${now.day}";
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('medsTaken')
+        .where('date', isEqualTo: todayDate)
+        .get();
+
+    setState(() {
+      for (var doc in snapshot.docs) {
+        final medId = doc['medId'];
+        _medTakenStatus[medId] = true;
+      }
+    });
+  }
+
+  Future<void> markMedicationAsTaken(String medId, String dosageStr) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final now = DateTime.now();
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('medsTaken')
+          .doc('${medId}_${now.toIso8601String()}')
+          .set({
+        'medId': medId,
+        'takenAt': now,
+        'date': "${now.year}-${now.month}-${now.day}",
+      });
+
+      final medDocRef = FirebaseFirestore.instance.collection('meds').doc(medId);
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final medSnapshot = await transaction.get(medDocRef);
+        if (!medSnapshot.exists) return;
+
+        final medData = medSnapshot.data() as Map<String, dynamic>;
+        final currentInventory = (medData['currentInventory'] ?? 0).toDouble();
+        final dosage = double.tryParse(dosageStr) ?? 0;
+
+        final newInventory = (currentInventory - dosage).clamp(0, double.infinity);
+
+        transaction.update(medDocRef, {'currentInventory': newInventory});
+      });
+    } catch (e) {
+      print('Error updating inventory: $e');
+    }
+  }
+
+  Widget _homeScreenContent() {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildCalendar(),
+          const SizedBox(height: 10),
+          const Text("Medications", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          _buildMedicationsList(),
+          const SizedBox(height: 20),
+          const Text("Appointments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          _buildAppointmentsList(),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -450,51 +479,23 @@ void _deleteMedication(String medId, BuildContext context) async {
         leading: IconButton(
           icon: const Icon(Icons.account_circle, size: 40, color: Colors.black),
           onPressed: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
           },
         ),
-        title: _buildTitle(),
+        title: _buildUserName(),
         actions: [
-          IconButton(
-              icon: const Icon(Icons.notifications, color: Colors.black),
-              onPressed: () {}),
+          IconButton(icon: const Icon(Icons.notifications, color: Colors.black), onPressed: () {}),
           IconButton(
               icon: const Icon(Icons.settings, color: Colors.black),
               onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SettingsPage()));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()));
               }),
         ],
       ),
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'images/photo1.png',
-                      width: double.infinity,
-                      height: 200,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.image_not_supported,
-                              size: 100, color: Colors.grey),
-                    ),
-                  ),
-                ),
-                _buildMedicationsList(),
-              ],
-            ),
-          ),
+          _homeScreenContent(),
           const RefillsPage(),
           const MedicationsPage(),
           const ManagePage(),
@@ -503,16 +504,14 @@ void _deleteMedication(String medId, BuildContext context) async {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+        onTap: _onNavItemTapped,
         backgroundColor: Colors.white,
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.auto_mode), label: 'Refills'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.medication_liquid_outlined), label: 'Medications'),
+          BottomNavigationBarItem(icon: Icon(Icons.auto_mode), label: 'Refills'),
+          BottomNavigationBarItem(icon: Icon(Icons.medication_liquid_outlined), label: 'Medications'),
           BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Manage'),
         ],
       ),
