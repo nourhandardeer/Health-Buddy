@@ -34,11 +34,18 @@ class _RefillRequestState extends State<RefillRequest> {
     Map<String, dynamic> dataToUpdate = {};
 
     if (isReminderOn) {
-      dataToUpdate['currentInventory'] = currentInventory.text;
-      dataToUpdate['remindMeWhen'] = reminderController.text;
+      final currentInventoryValue = int.tryParse(currentInventory.text.trim());
+      final remindMeWhenValue = int.tryParse(reminderController.text.trim());
+
+      if (currentInventoryValue != null) {
+        dataToUpdate['currentInventory'] = currentInventoryValue;
+      }
+
+      if (remindMeWhenValue != null) {
+        dataToUpdate['remindMeWhen'] = remindMeWhenValue;
+      }
     }
 
-    // ✅ التحقق من أن هناك بيانات قبل استدعاء update()
     if (dataToUpdate.isNotEmpty) {
       await FirebaseFirestore.instance
           .collection('meds')
@@ -58,6 +65,7 @@ class _RefillRequestState extends State<RefillRequest> {
     );
   }
 }
+
 
 
 
