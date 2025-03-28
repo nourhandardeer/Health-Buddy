@@ -27,8 +27,8 @@ void main() async {
 
   runApp(
     DevicePreview(
-      enabled: true, // Set to false in production
-      builder: (context) => MyApp(), // Your main app widget
+      enabled: true, 
+      builder: (context) => MyApp(), 
     ),
   );
 }

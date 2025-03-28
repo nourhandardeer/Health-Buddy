@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:table_calendar/table_calendar.dart';
-
-// صفحات التنقل
 import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:graduation_project/NavigationBar/medications_page.dart';
 import 'package:graduation_project/NavigationBar/refills_page.dart';
@@ -36,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ================ اسم المستخدم ===================
+  // ================ user name===================
   Widget _buildUserName() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -89,22 +87,22 @@ class _HomeScreenState extends State<HomeScreen> {
       headerVisible: false,
     );
   }
-  
-  Stream<QuerySnapshot> fetchAppointmentsCollection() {
+
+  Stream<List<QueryDocumentSnapshot>> fetchAppointmentsCollection() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print("No user found");
       return const Stream.empty();
     }
-
     return FirebaseFirestore.instance
         .collection('appointments')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+        .where('linkedUserIds', arrayContains: user.uid)
+        .snapshots()
+        .map((snapshot) => snapshot.docs); // Convert snapshot to list of docs
+
   }
 
   Widget _buildAppointmentsList() {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<QueryDocumentSnapshot>>(
       stream: fetchAppointmentsCollection(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -114,11 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
           print('Appointments Error: ${snapshot.error}');
           return const Center(child: Text("Error loading appointments"));
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text("No appointments found"));
         }
 
-        var appointments = snapshot.data!.docs;
+        var appointments = snapshot.data!;
 
         return ListView.builder(
           shrinkWrap: true,
@@ -169,8 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================ Medications ===================
-  Stream<QuerySnapshot> fetchMedsCollectionAll() {
+ // ================ Medications ===================
+  Stream<List<QueryDocumentSnapshot>> fetchMedsCollectionAll() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Stream.empty();
@@ -178,12 +176,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return FirebaseFirestore.instance
         .collection('meds')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+        .where('linkedUserIds', arrayContains: user.uid) // Filter meds for user
+        .snapshots()
+        .map((snapshot) => snapshot.docs); // Convert snapshot to list of docs
+
   }
 
   Widget _buildMedicationsList() {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<QueryDocumentSnapshot>>(
       stream: fetchMedsCollectionAll(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -192,11 +192,11 @@ class _HomeScreenState extends State<HomeScreen> {
         if (snapshot.hasError) {
           return const Center(child: Text("Error loading medications"));
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text("No medications found"));
         }
 
-        var medications = snapshot.data!.docs;
+        var medications = snapshot.data!;
 
         String selectedDayName = _selectedDay != null
             ? getDayName(_selectedDay!.weekday).toLowerCase()
@@ -326,44 +326,73 @@ class _HomeScreenState extends State<HomeScreen> {
                             decoration: BoxDecoration(
                               color: Colors.redAccent.withOpacity(0.2),
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: alreadyTakenToday ? Colors.blue : Colors.black,
-                                  width: 2),
-                              color: alreadyTakenToday ? Colors.blue : Colors.transparent,
                             ),
-                            child: alreadyTakenToday
-                                ? const Icon(Icons.check, color: Colors.white, size: 18)
-                                : null,
+                            child: const Icon(Icons.medication, color: Colors.redAccent, size: 30),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(medData['name'] ?? "Unknown",
+                                    style: const TextStyle(
+                                        fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                                Text("${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
+                                    style: const TextStyle(fontSize: 14, color: Colors.black)),
+                                const SizedBox(height: 4),
+                                Text("Frequency: ${medData['frequency'] ?? 'N/A'}",
+                                    style: const TextStyle(fontSize: 14, color: Colors.black54)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-          );
-        },
-      );
-    },
-  );
-}
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
+  bool isTodaySelected() {
+    final today = DateTime.now();
+    return _selectedDay == null
+        ? isSameDay(_focusedDay, today)
+        : isSameDay(_selectedDay!, today);
+  }
 
+  String getDayName(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Monday';
+      case DateTime.tuesday:
+        return 'Tuesday';
+      case DateTime.wednesday:
+        return 'Wednesday';
+      case DateTime.thursday:
+        return 'Thursday';
+      case DateTime.friday:
+        return 'Friday';
+      case DateTime.saturday:
+        return 'Saturday';
+      case DateTime.sunday:
+        return 'Sunday';
+      default:
+        return '';
+    }
+  }
 
-
-
-
-
-
-
-void _showMedicationDetails(BuildContext context, String medId, Map<String, dynamic> medData) {
-  DateTime now = DateTime.now();
-  DateTime today = DateTime(now.year, now.month, now.day);
-  DateTime? lastTakenDate;
-
-  if (medData['lastTakenDate'] != null) {
-    lastTakenDate = (medData['lastTakenDate'] as Timestamp).toDate();
+  String formatReminderTime(String time) {
+    if (time.isEmpty) return "";
+    time = time.toUpperCase();
+    if (time.contains('AM') || time.contains('PM')) {
+      time = time.replaceAll('AM', ' AM').replaceAll('PM', ' PM');
+    }
+    return time.trim();
   }
 
   Future<void> loadTakenMedsForToday() async {
@@ -470,7 +499,7 @@ void _showMedicationDetails(BuildContext context, String medId, Map<String, dyna
           _homeScreenContent(),
           const RefillsPage(),
           const MedicationsPage(),
-          const ManagePage(),
+           ManagePage(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
