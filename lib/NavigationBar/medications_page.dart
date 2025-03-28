@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:graduation_project/AddMed/addmed.dart';
 import 'package:graduation_project/AddMed/medication_details_page.dart';
 
+import '../services/firestore_service.dart';
+
 class MedicationsPage extends StatefulWidget {
   const MedicationsPage({super.key});
 
@@ -14,6 +16,7 @@ class MedicationsPage extends StatefulWidget {
 class _MedicationsPageState extends State<MedicationsPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
@@ -44,40 +47,20 @@ class _MedicationsPageState extends State<MedicationsPage> {
     );
   }
 
-  return FutureBuilder<DocumentSnapshot>(
-    future: _firestore.collection('users').doc(user.uid).get(),
+  return FutureBuilder<List<String>>(
+    future:  _firestoreService.getEmergencyUserIds(user.uid),
     builder: (context, userSnapshot) {
       if (userSnapshot.connectionState == ConnectionState.waiting) {
         return const Center(child: CircularProgressIndicator());
       }
-      if (userSnapshot.hasError || !userSnapshot.hasData || !userSnapshot.data!.exists) {
+      if (userSnapshot.hasError || !userSnapshot.hasData) {
         return const Center(
           child: Text("Error loading user data", style: TextStyle(color: Colors.red)),
         );
       }
 
-      var userData = userSnapshot.data!.data() as Map<String, dynamic>;
-
-      List<String> emergencyUserIds = (userData['emergencyContacts'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [];
-
-      return FutureBuilder<List<QuerySnapshot>>(
-        future: Future.wait([
-          _firestore
-              .collection('meds')
-              .where('userId', isEqualTo: user.uid)
-              .get(),
-          _firestore
-              .collection('meds')
-              .where('originalUserEmergencyContacts', arrayContains: user.uid)
-              .get(),
-          _firestore
-              .collection('meds')
-              .where('emergencyUserIds', arrayContains: user.uid)
-              .get(),
-        ]),
+      return FutureBuilder<QuerySnapshot>(
+        future: _firestoreService.getMedications(userSnapshot.data!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -88,11 +71,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
             );
           }
 
-          List<QueryDocumentSnapshot> medications = [
-            ...snapshot.data![0].docs,
-            ...snapshot.data![1].docs,
-            ...snapshot.data![2].docs
-          ];
+          List<QueryDocumentSnapshot> medications = snapshot.data!.docs;
 
           if (medications.isEmpty) {
             return _buildEmptyState();

@@ -5,6 +5,8 @@ import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:intl/intl.dart';
 import 'package:graduation_project/home.dart';
 
+import '../services/firestore_service.dart';
+
 class AddAppointment extends StatefulWidget {
   const AddAppointment({super.key});
 
@@ -13,6 +15,7 @@ class AddAppointment extends StatefulWidget {
 }
 
 class _AddAppointmentState extends State<AddAppointment> {
+  final FirestoreService _firestoreService = FirestoreService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -47,6 +50,8 @@ class _AddAppointmentState extends State<AddAppointment> {
   }
 
   Future<void> _saveAppointment() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
     if (selectedDate == null ||
         selectedTime == null ||
         doctorNameController.text.isEmpty ||
@@ -58,100 +63,42 @@ class _AddAppointmentState extends State<AddAppointment> {
       );
       return;
     }
+    String uid = user!.uid;
 
     try {
-      User? user = _auth.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not logged in')),
-        );
+      // Fetch the current user's document
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection(
+          'users').doc(uid).get();
+      String? phoneNumber = userDoc['phone']; // Fetch user's phone number
+
+      if (phoneNumber == null) {
+        print("DEBUG: No phone number found for the current user.");
         return;
       }
-      String uid = user.uid;
+      _firestoreService.saveData(
+        collection: 'appointments',
+        context: context,
+        data: {
+          'userId': FirebaseAuth.instance.currentUser?.uid,
+          'doctorName': doctorNameController.text,
+          'doctorPhone': doctorPhoneController.text,
+          'specialty': specialtyController.text,
+          'location': locationController.text,
+          'notes': notesController.text,
+          'appointmentDate': DateFormat('yyyy-MM-dd').format(selectedDate!),
+          'appointmentTime': selectedTime!.format(context),
+          'createdAt': FieldValue.serverTimestamp(),
+          //'linkedUserIds': linkedUsers,
 
-      QuerySnapshot emergencyContactsSnapshot = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('emergencyContacts')
-          .get();
-
-      List<String> emergencyContacts = emergencyContactsSnapshot.docs
-          .map((doc) => doc['phone'] as String)
-          .toList();
-
-      List<String> emergencyUserIds = [];
-
-      //searches in users collection
-      if (emergencyContacts.isNotEmpty) {
-        QuerySnapshot emergencyUsersSnapshot = await _firestore
-            .collection('users')
-            .where('phone', whereIn: emergencyContacts)
-            .get();
-
-        emergencyUserIds =
-            emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
-      }
-      //Finds users who have the same phone number as the Logged-in User
-      QuerySnapshot reverseEmergencyContactsSnapshot = await _firestore
-          .collection('users')
-          .where('phone', isEqualTo: user.phoneNumber)
-          .get();
-
-      for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
-        String originalUserId = reverseDoc.id;
-        if (originalUserId == uid) continue;
-
-        //users/userid/emergencyContact
-        QuerySnapshot originalUserEmergencyContactsSnapshot = await _firestore
-            .collection('users')
-            .doc(originalUserId)
-            .collection('emergencyContacts')
-            .where('phone', isEqualTo: user.phoneNumber)
-            .get();
-
-        if (originalUserEmergencyContactsSnapshot.docs.isNotEmpty) {
-          emergencyUserIds.add(originalUserId);
-        }
-      }
-      // await _firestore.collection('appointments').add({
-      //   'userId': uid,
-      //   'doctorName': doctorNameController.text,
-      //   'doctorPhone': doctorPhoneController.text,
-      //   'specialty': specialtyController.text,
-      //   'location': locationController.text,
-      //   'notes': notesController.text,
-      //   'appointmentDate': DateFormat('yyyy-MM-dd').format(selectedDate!),
-      //   'appointmentTime': selectedTime!.format(context),
-      //   'createdAt': FieldValue.serverTimestamp(),
-      //   'linkedFrom': uid,
-      //
-      // });
-      Map<String, dynamic> appointmentData = {
-        'userId': uid,
-        'doctorName': doctorNameController.text,
-        'doctorPhone': doctorPhoneController.text,
-        'specialty': specialtyController.text,
-        'location': locationController.text,
-        'notes': notesController.text,
-        'appointmentDate': DateFormat('yyyy-MM-dd').format(selectedDate!),
-        'appointmentTime': selectedTime!.format(context),
-        'createdAt': FieldValue.serverTimestamp(),
-        'linkedUsers': [uid, ...emergencyUserIds], // Store all linked users
-      };
-
-      // Save appointment in the top-level `appointments` collection
-      await _firestore.collection('appointments').add(appointmentData);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Appointment saved successfully!')),
+        },
       );
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      ;
-    } catch (e) {
+      Navigator.pop(context);
+    }
+    catch (e) {
+      print("Error saving medication: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+        SnackBar(content: Text('Error saving data: $e'),
+            backgroundColor: Colors.red),
       );
     }
   }

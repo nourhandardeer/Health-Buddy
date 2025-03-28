@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:graduation_project/pages/splash_screen.dart';
 import 'package:graduation_project/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-
+FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  
   if (kIsWeb) {
     await Firebase.initializeApp(
         options: FirebaseOptions(
@@ -25,11 +27,47 @@ void main() async {
     await Firebase.initializeApp();
   }
 
+  
+  await initializeNotifications();
+
   runApp(
     DevicePreview(
-      enabled: true, 
-      builder: (context) => MyApp(), 
+      enabled: true, // Set to false in production
+      builder: (context) => MyApp(),
     ),
+  );
+}
+
+
+Future<void> initializeNotifications() async {
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+  
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+ 
+  showTestNotification();
+}
+
+
+Future<void> showTestNotification() async {
+  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'channel_id',
+    'Test Channel',
+    importance: Importance.high,
+    priority: Priority.high,
+  );
+
+  const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    'Hello!',
+    'This is a test notification',
+    platformDetails,
   );
 }
 
@@ -41,8 +79,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
-      home: AuthCheck(), //SplashScreen(),
-      // initialRoute: 'home',m
+      home: AuthCheck(),
     );
   }
 }
@@ -51,15 +88,15 @@ class AuthCheck extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(), // Listen for auth state
+      stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator()); // Show loading
+          return Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasData) {
-          return HomeScreen(); // Redirect to dashboard if user is logged in
+          return HomeScreen(); 
         } else {
-          return SplashScreen(); // Redirect to login screen if no user
+          return SplashScreen(); 
         }
       },
     );

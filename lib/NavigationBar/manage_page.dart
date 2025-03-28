@@ -4,8 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/pages/add_appointment.dart';
 import 'package:graduation_project/pages/add_pharmacy.dart';
 
+import '../services/firestore_service.dart';
+
 class ManagePage extends StatelessWidget {
-  const ManagePage({super.key});
+   ManagePage({super.key});
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
@@ -58,70 +61,93 @@ class ManagePage extends StatelessWidget {
       return const Center(
           child: Text("Please log in to see your appointments."));
     }
+    return FutureBuilder<List<String>>(
+        future: _firestoreService.getEmergencyUserIds(user.uid),
+        builder: (context, linkedUsersSnapshot) {
+          if (linkedUsersSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-    return StreamBuilder(
-      stream: FirebaseFirestore.instance
-          .collection('appointments')
-          .where('linkedUsers', arrayContains: user.uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+          if (linkedUsersSnapshot.hasError || !linkedUsersSnapshot.hasData) {
+            return const Center(
+              child: Text(
+                "Error loading user data.",
+                style: TextStyle(color: Colors.red),
+              ),
+            );
+          }
 
-        var hasAppointments = snapshot.hasData &&
-            snapshot.data!.docs.isNotEmpty;
-
-        return Scaffold(
-          body: hasAppointments
-              ? ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              var appointment = snapshot.data!.docs[index];
-              String appointmentId = appointment.id;
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                child: ListTile(
-                  leading: const Icon(Icons.event, color: Colors.blue),
-                  trailing: IconButton(onPressed: () =>  deleteAppointment(appointmentId, context),
-                      icon: const Icon(Icons.delete, color: Colors.red,)),
-                  title: Text(
-                    appointment['doctorName'],
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+          List<String> linkedUserIds = linkedUsersSnapshot.data!;
+          print("DEBUG: Linked user IDs -> $linkedUserIds");
+             return StreamBuilder<QuerySnapshot>(
+            stream: _firestoreService.getAppointmentsStream(linkedUserIds),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError || !snapshot.hasData) {
+                return const Center(
+                  child: Text(
+                    "Error loading appointments.",
+                    style: TextStyle(color: Colors.red),
                   ),
-                  subtitle: Text(
-                    "Date: ${appointment['appointmentDate']} | Time: ${appointment['appointmentTime']}",
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  onTap: () {
-                    _showAppointmentDetails(
-                      context,
-                      appointment['doctorName'],
-                      appointment['doctorPhone'],
-                      appointment['specialty'],
-                      appointment['location'],
-                      appointment['notes'],
-                      appointment['appointmentDate'],
-                      appointment['appointmentTime'],
+                );
+              }
+              var hasAppointments = snapshot.hasData &&
+                  snapshot.data!.docs.isNotEmpty;
+
+              return Scaffold(
+                body: hasAppointments
+                    ? ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    var appointment = snapshot.data!.docs[index];
+                    String appointmentId = appointment.id;
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: ListTile(
+                        leading: const Icon(Icons.event, color: Colors.blue),
+                        trailing: IconButton(onPressed: () =>
+                            deleteAppointment(appointmentId, context),
+                            icon: const Icon(Icons.delete, color: Colors.red,)),
+                        title: Text(
+                          appointment['doctorName'],
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          "Date: ${appointment['appointmentDate']} | Time: ${appointment['appointmentTime']}",
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        onTap: () {
+                          _showAppointmentDetails(
+                            context,
+                            appointment['doctorName'],
+                            appointment['doctorPhone'],
+                            appointment['specialty'],
+                            appointment['location'],
+                            appointment['notes'],
+                            appointment['appointmentDate'],
+                            appointment['appointmentTime'],
+                          );
+                        },
+                      ),
+
                     );
                   },
-                ),
+                )
+                    : _buildEmptyState(context),
 
+                floatingActionButton: FloatingActionButton(
+                  backgroundColor: Colors.blue,
+                  onPressed: () => _showBottomSheet(context),
+                  child: const Icon(Icons.add, color: Colors.white),
+                ),
               );
             },
-          )
-              : _buildEmptyState(context),
-
-          floatingActionButton: FloatingActionButton(
-            backgroundColor: Colors.blue,
-            onPressed: () => _showBottomSheet(context),
-            child: const Icon(Icons.add, color: Colors.white),
-          ),
-        );
-      },
-    );
+          );
+        });
   }
  Future <void> deleteAppointment(String appointmentId, BuildContext context) async {
    try {
@@ -140,33 +166,12 @@ class ManagePage extends StatelessWidget {
        );
        return;
      }
-     Map<String, dynamic> appointmentData =
-     appointmentSnapshot.data() as Map<String, dynamic>;
-
-     List<String> linkedUsers = List<String>.from(appointmentData['linkedUsers'] ?? []);
-
-     if (linkedUsers.isEmpty) {
-       ScaffoldMessenger.of(context).showSnackBar(
-         const SnackBar(content: Text('No linked users found for this appointment')),
-       );
-       return;
-     }
-     WriteBatch batch = firestore.batch();
-     for (String userId in linkedUsers) {
-       QuerySnapshot userAppointments = await firestore
-           .collection('appointments')
-           .where('linkedUsers', arrayContains: userId)
-           .get();
-
-       for (var doc in userAppointments.docs) {
-         batch.delete(doc.reference);
-       }
-     }
-
-     await batch.commit();
+     await firestore.collection('appointments').doc(appointmentId).delete();
 
      ScaffoldMessenger.of(context).showSnackBar(
-       const SnackBar(content: Text('Appointment deleted for all linked users!')),
+       const SnackBar(content: Text('Appointment deleted successfully!'),
+         backgroundColor: Colors.red,
+       ),
      );
    }
    catch (e) {

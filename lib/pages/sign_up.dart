@@ -74,18 +74,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _onSignupSuccess(String userId, String firstName, String lastName, String phone) {
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ProfileSetupPage(
-        userId: userId,
-        firstName: firstName,
-        lastName: lastName,
-        phone: phone ,
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileSetupPage(
+          userId: userId,
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone ,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Future<void> checkAndLinkEmergencyContact(User user) async {
     try {
