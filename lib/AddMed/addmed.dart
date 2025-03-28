@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:graduation_project/pages/EmergencyContactPage.dart';
+import '../EmergencyContactHelper.dart';
+import '../services/firestore_service.dart';
 import 'times.dart';
 
 class AddMedicationPage extends StatefulWidget {
@@ -10,6 +13,7 @@ class AddMedicationPage extends StatefulWidget {
 
 class _AddMedicationPageState extends State<AddMedicationPage> {
   final TextEditingController medicationController = TextEditingController();
+  final FirestoreService _firestoreService = FirestoreService();
   String? selectedUnit;
   int dosage = 1;
 
@@ -30,98 +34,152 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
     );
     return;
   }
-
   String uid = user.uid;
-  String docId = ""; // تعريف docId بدون تحديده مباشرة
 
   try {
-    // **تحقق مما إذا كان هناك دواء بنفس الاسم لنفس المستخدم**
-    QuerySnapshot existingMeds = await FirebaseFirestore.instance
-        .collection('meds')
-        .where('userId', isEqualTo: uid)
-        .where('name', isEqualTo: medicationController.text)
-        .get();
+    // Fetch the current user's document
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    String? phoneNumber = userDoc['phone']; // Fetch user's phone number
 
-    if (existingMeds.docs.isNotEmpty) {
-      docId = existingMeds.docs.first.id; // إذا كان موجودًا، استخدم نفس الـ docId
-      print("⚠️ الدواء موجود بالفعل، سيتم التحديث فقط.");
-
-      // **تحديث فقط بدون فقدان البيانات السابقة**
-      await FirebaseFirestore.instance.collection('meds').doc(docId).update({
-        'unit': selectedUnit,
-        'dosage': dosage,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    } else {
-      docId = FirebaseFirestore.instance.collection('meds').doc().id; // إنشاء ID جديد إذا لم يكن موجودًا
-
-      // **جلب emergencyUserIds و originalUserEmergencyContacts**
-      QuerySnapshot emergencyContactsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('emergencyContacts')
-          .get();
-
-      List<String> emergencyContacts = emergencyContactsSnapshot.docs
-          .map((doc) => doc['phone'] as String)
-          .toList();
-
-      List<String> emergencyUserIds = [];
-
-      if (emergencyContacts.isNotEmpty) {
-        QuerySnapshot emergencyUsersSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', whereIn: emergencyContacts)
-            .get();
-
-        emergencyUserIds = emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
-      }
-
-      // جلب الـ originalUserEmergencyContacts
-      QuerySnapshot reverseEmergencyContactsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('phone', isEqualTo: user.phoneNumber)
-          .get();
-
-      List<String> originalUserEmergencyContacts = [];
-
-      for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
-        String originalUserId = reverseDoc.id;
-        if (originalUserId == uid) continue;
-
-        QuerySnapshot originalUserEmergencyContactsSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(originalUserId)
-            .collection('emergencyContacts')
-            .where('phone', isEqualTo: user.phoneNumber)
-            .get();
-
-        if (originalUserEmergencyContactsSnapshot.docs.isNotEmpty) {
-          originalUserEmergencyContacts.add(originalUserId);
-        }
-      }
-
-      // **حفظ البيانات في Firestore لأول مرة**
-      await FirebaseFirestore.instance.collection('meds').doc(docId).set({
-        'name': medicationController.text,
-        'unit': selectedUnit,
-        'userId': uid,
-        'dosage': dosage,
-        'timestamp': FieldValue.serverTimestamp(),
-        'linkedFrom': uid,
-        'emergencyUserIds': emergencyUserIds,
-        'originalUserEmergencyContacts': originalUserEmergencyContacts,
-      });
+    if (phoneNumber == null) {
+      print("DEBUG: No phone number found for the current user.");
+      return;
     }
 
-    // الانتقال للصفحة التالية
-    _navigateToTimesPage(docId);
+
+    // Save medication data
+    String? docId = await _firestoreService.saveData(
+      collection: 'meds',
+      context: context,
+      data: {
+        'name': medicationController.text,
+        'unit': selectedUnit,
+        'dosage': dosage,
+       // 'userId': finalUserId, // ✅ Use the correct patient ID
+        'timestamp': FieldValue.serverTimestamp(),
+       // 'linkedUserIds': linkedUsers,
+      },
+    );
+
+    if (docId != null) {
+      print("DEBUG: Medication saved with doc ID -> $docId");
+      _navigateToTimesPage(docId);
+    } else {
+      print("Failed to retrieve document ID");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error saving data'), backgroundColor: Colors.red),
+      );
+    }
   } catch (e) {
+    print("Error saving medication: $e");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Error saving data: $e'), backgroundColor: Colors.red),
     );
   }
-}
+ }
+
+  // Future<void> _saveMedicationData() async {
+  //   User? user = FirebaseAuth.instance.currentUser;
+  //   if (user == null) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('User not logged in'), backgroundColor: Colors.red),
+  //     );
+  //     return;
+  //   }
+  //
+  //   String uid = user.uid;
+  //   String docId = ""; // تعريف docId بدون تحديده مباشرة
+  //
+  //   try {
+  //     // **تحقق مما إذا كان هناك دواء بنفس الاسم لنفس المستخدم**
+  //     QuerySnapshot existingMeds = await FirebaseFirestore.instance
+  //         .collection('meds')
+  //         .where('userId', isEqualTo: uid)
+  //         .where('name', isEqualTo: medicationController.text)
+  //         .get();
+  //
+  //     if (existingMeds.docs.isNotEmpty) {
+  //       docId = existingMeds.docs.first.id; // إذا كان موجودًا، استخدم نفس الـ docId
+  //       print("⚠️ الدواء موجود بالفعل، سيتم التحديث فقط.");
+  //
+  //       // **تحديث فقط بدون فقدان البيانات السابقة**
+  //       await FirebaseFirestore.instance.collection('meds').doc(docId).update({
+  //         'unit': selectedUnit,
+  //         'dosage': dosage,
+  //         'timestamp': FieldValue.serverTimestamp(),
+  //       });
+  //     } else {
+  //       docId = FirebaseFirestore.instance.collection('meds').doc().id; // إنشاء ID جديد إذا لم يكن موجودًا
+  //
+  //       // **جلب emergencyUserIds و originalUserEmergencyContacts**
+  //       QuerySnapshot emergencyContactsSnapshot = await FirebaseFirestore.instance
+  //           .collection('users')
+  //           .doc(uid)
+  //           .collection('emergencyContacts')
+  //           .get();
+  //
+  //       List<String> emergencyContacts = emergencyContactsSnapshot.docs
+  //           .map((doc) => doc['phone'] as String)
+  //           .toList();
+  //
+  //       List<String> emergencyUserIds = [];
+  //
+  //       if (emergencyContacts.isNotEmpty) {
+  //         QuerySnapshot emergencyUsersSnapshot = await FirebaseFirestore.instance
+  //             .collection('users')
+  //             .where('phone', whereIn: emergencyContacts)
+  //             .get();
+  //
+  //         emergencyUserIds = emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
+  //       }
+  //
+  //       // جلب الـ originalUserEmergencyContacts
+  //       QuerySnapshot reverseEmergencyContactsSnapshot = await FirebaseFirestore.instance
+  //           .collection('users')
+  //           .where('phone', isEqualTo: user.phoneNumber)
+  //           .get();
+  //
+  //       List<String> originalUserEmergencyContacts = [];
+  //
+  //       for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
+  //         String originalUserId = reverseDoc.id;
+  //         if (originalUserId == uid) continue;
+  //
+  //         QuerySnapshot originalUserEmergencyContactsSnapshot = await FirebaseFirestore.instance
+  //             .collection('users')
+  //             .doc(originalUserId)
+  //             .collection('emergencyContacts')
+  //             .where('phone', isEqualTo: user.phoneNumber)
+  //             .get();
+  //
+  //         if (originalUserEmergencyContactsSnapshot.docs.isNotEmpty) {
+  //           originalUserEmergencyContacts.add(originalUserId);
+  //         }
+  //       }
+  //
+  //       // **حفظ البيانات في Firestore لأول مرة**
+  //       await FirebaseFirestore.instance.collection('meds').doc(docId).set({
+  //         'name': medicationController.text,
+  //         'unit': selectedUnit,
+  //         'userId': uid,
+  //         'dosage': dosage,
+  //         'timestamp': FieldValue.serverTimestamp(),
+  //         'linkedFrom': uid,
+  //         'emergencyUserIds': emergencyUserIds,
+  //         'originalUserEmergencyContacts': originalUserEmergencyContacts,
+  //       });
+  //     }
+  //
+  //     // الانتقال للصفحة التالية
+  //     _navigateToTimesPage(docId);
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Error saving data: $e'), backgroundColor: Colors.red),
+  //     );
+  //   }
+  // }
+
+
 
   void _navigateToTimesPage(String docId) {
     try {
@@ -192,25 +250,24 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // زر تقليل الجرعة
                 IconButton(
                   onPressed: dosage > 1
                       ? () => setState(() => dosage--)
-                      : null, // تعطيل الزر إذا كانت الجرعة 1
+                      : null,
                   icon: const Icon(Icons.remove_circle, color: Colors.red, size: 30),
                 ),
 
-                // عرض الجرعة والوحدة بجانبها
+
                 Text(
                   "$dosage ${selectedUnit ?? ''}",
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
 
-                // زر زيادة الجرعة
+
                 IconButton(
                   onPressed: dosage < 10
                       ? () => setState(() => dosage++)
-                      : null, // تعطيل الزر إذا كانت الجرعة 10
+                      : null,
                   icon: const Icon(Icons.add_circle, color: Colors.green, size: 30),
                 ),
               ],
@@ -224,6 +281,7 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
           onPressed: () {
             if (medicationController.text.isNotEmpty && selectedUnit != null) {
               _saveMedicationData();
+             // _navigateToTimesPage(docId)
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

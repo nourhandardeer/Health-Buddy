@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:table_calendar/table_calendar.dart';
-
 import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:graduation_project/NavigationBar/medications_page.dart';
 import 'package:graduation_project/NavigationBar/refills_page.dart';
@@ -88,22 +87,22 @@ class _HomeScreenState extends State<HomeScreen> {
       headerVisible: false,
     );
   }
-  
-  Stream<QuerySnapshot> fetchAppointmentsCollection() {
+
+  Stream<List<QueryDocumentSnapshot>> fetchAppointmentsCollection() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print("No user found");
       return const Stream.empty();
     }
-
     return FirebaseFirestore.instance
         .collection('appointments')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+        .where('linkedUserIds', arrayContains: user.uid)
+        .snapshots()
+        .map((snapshot) => snapshot.docs); // Convert snapshot to list of docs
+
   }
 
   Widget _buildAppointmentsList() {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<QueryDocumentSnapshot>>(
       stream: fetchAppointmentsCollection(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -113,11 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
           print('Appointments Error: ${snapshot.error}');
           return const Center(child: Text("Error loading appointments"));
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text("No appointments found"));
         }
 
-        var appointments = snapshot.data!.docs;
+        var appointments = snapshot.data!;
 
         return ListView.builder(
           shrinkWrap: true,
@@ -168,8 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================ Medications ===================
-  Stream<QuerySnapshot> fetchMedsCollectionAll() {
+ // ================ Medications ===================
+  Stream<List<QueryDocumentSnapshot>> fetchMedsCollectionAll() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Stream.empty();
@@ -177,12 +176,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return FirebaseFirestore.instance
         .collection('meds')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots();
+        .where('linkedUserIds', arrayContains: user.uid) // Filter meds for user
+        .snapshots()
+        .map((snapshot) => snapshot.docs); // Convert snapshot to list of docs
+
   }
 
   Widget _buildMedicationsList() {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<QueryDocumentSnapshot>>(
       stream: fetchMedsCollectionAll(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -191,11 +192,11 @@ class _HomeScreenState extends State<HomeScreen> {
         if (snapshot.hasError) {
           return const Center(child: Text("Error loading medications"));
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(child: Text("No medications found"));
         }
 
-        var medications = snapshot.data!.docs;
+        var medications = snapshot.data!;
 
         String selectedDayName = _selectedDay != null
             ? getDayName(_selectedDay!.weekday).toLowerCase()
@@ -498,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _homeScreenContent(),
           const RefillsPage(),
           const MedicationsPage(),
-          const ManagePage(),
+           ManagePage(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
