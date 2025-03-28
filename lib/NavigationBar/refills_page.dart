@@ -30,8 +30,8 @@ class _RefillsPageState extends State<RefillsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        // title: const Text("Refills Needed"),
-      ),
+          // title: const Text("Refills Needed"),
+          ),
       body: _buildRefillsList(user.uid),
     );
   }
@@ -40,7 +40,7 @@ class _RefillsPageState extends State<RefillsPage> {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
           .collection('meds')
-          .where('userId', isEqualTo: userId)
+          .where('linkedUserIds', arrayContains: userId)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -62,8 +62,10 @@ class _RefillsPageState extends State<RefillsPage> {
               const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
             var data = documents[index].data() as Map<String, dynamic>;
-            String inventoryStr = data['currentInventory']?.trim() ?? '0';
-            int inventory = int.tryParse(inventoryStr) ?? 0;
+            debugPrint("Medication Name: ${data['name']}");
+            int inventory = (data['currentInventory'] is int)
+                ? data['currentInventory'] as int
+                : (data['currentInventory'] as double?)?.toInt() ?? 0;
 
             return Card(
               color: Colors.grey[200],
@@ -81,7 +83,9 @@ class _RefillsPageState extends State<RefillsPage> {
                 title: Text(
                   data["name"] ?? "Unknown Medication",
                   style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black),
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
