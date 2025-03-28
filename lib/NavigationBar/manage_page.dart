@@ -82,10 +82,6 @@ class ManagePage extends StatelessWidget {
              return StreamBuilder<QuerySnapshot>(
             stream: _firestoreService.getAppointmentsStream(linkedUserIds),
             builder: (context, snapshot) {
-              print("DEBUG: StreamBuilder - Connection State -> ${snapshot.connectionState}");
-              print("DEBUG: StreamBuilder - Has Data? -> ${snapshot.hasData}");
-              print("DEBUG: StreamBuilder - Has Error? -> ${snapshot.hasError}");
-              print("DEBUG: StreamBuilder - Docs Count -> ${snapshot.data?.docs.length ?? 0}");
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
