@@ -35,77 +35,23 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
     return;
   }
   String uid = user.uid;
-  String docId = ""; // تعريف docId بدون تحديده مباشرة
 
   try {
-    // **تحقق مما إذا كان هناك دواء بنفس الاسم لنفس المستخدم**
-    QuerySnapshot existingMeds = await FirebaseFirestore.instance
-        .collection('meds')
-        .where('userId', isEqualTo: uid)
-        .where('name', isEqualTo: medicationController.text)
-        .get();
+    // Fetch the current user's document
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    String? phoneNumber = userDoc['phone']; // Fetch user's phone number
 
-    if (existingMeds.docs.isNotEmpty) {
-      docId = existingMeds.docs.first.id; // إذا كان موجودًا، استخدم نفس الـ docId
-      print("⚠️ الدواء موجود بالفعل، سيتم التحديث فقط.");
+    if (phoneNumber == null) {
+      print("DEBUG: No phone number found for the current user.");
+      return;
+    }
 
-      // **تحديث فقط بدون فقدان البيانات السابقة**
-      await FirebaseFirestore.instance.collection('meds').doc(docId).update({
-        'unit': selectedUnit,
-        'dosage': dosage,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    } else {
-      docId = FirebaseFirestore.instance.collection('meds').doc().id; // إنشاء ID جديد إذا لم يكن موجودًا
 
-      // **جلب emergencyUserIds و originalUserEmergencyContacts**
-      QuerySnapshot emergencyContactsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('emergencyContacts')
-          .get();
-
-      List<String> emergencyContacts = emergencyContactsSnapshot.docs
-          .map((doc) => doc['phone'] as String)
-          .toList();
-
-      List<String> emergencyUserIds = [];
-
-      if (emergencyContacts.isNotEmpty) {
-        QuerySnapshot emergencyUsersSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('phone', whereIn: emergencyContacts)
-            .get();
-
-        emergencyUserIds = emergencyUsersSnapshot.docs.map((doc) => doc.id).toList();
-      }
-
-      // جلب الـ originalUserEmergencyContacts
-      QuerySnapshot reverseEmergencyContactsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('phone', isEqualTo: user.phoneNumber)
-          .get();
-
-      List<String> originalUserEmergencyContacts = [];
-
-      for (var reverseDoc in reverseEmergencyContactsSnapshot.docs) {
-        String originalUserId = reverseDoc.id;
-        if (originalUserId == uid) continue;
-
-        QuerySnapshot originalUserEmergencyContactsSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(originalUserId)
-            .collection('emergencyContacts')
-            .where('phone', isEqualTo: user.phoneNumber)
-            .get();
-
-        if (originalUserEmergencyContactsSnapshot.docs.isNotEmpty) {
-          originalUserEmergencyContacts.add(originalUserId);
-        }
-      }
-
-      // **حفظ البيانات في Firestore لأول مرة**
-      await FirebaseFirestore.instance.collection('meds').doc(docId).set({
+    // Save medication data
+    String? docId = await _firestoreService.saveData(
+      collection: 'meds',
+      context: context,
+      data: {
         'name': medicationController.text,
         'unit': selectedUnit,
         'dosage': dosage,
