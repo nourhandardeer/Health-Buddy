@@ -6,11 +6,13 @@ import 'package:graduation_project/pages/splash_screen.dart';
 import 'package:graduation_project/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:graduation_project/services/notification_service.dart';
 
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.initialize();
 
   
   if (kIsWeb) {
