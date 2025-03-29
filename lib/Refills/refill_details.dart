@@ -73,7 +73,8 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Scaffold(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+
       appBar: AppBar(
         title: Text(widget.medData["name"] ?? "Medication Details"),
       ),

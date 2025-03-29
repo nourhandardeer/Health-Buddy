@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:graduation_project/pages/EmergencyContactPage.dart';
-import '../EmergencyContactHelper.dart';
 import '../services/firestore_service.dart';
 import 'times.dart';
 
@@ -204,7 +202,8 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.white),
+      appBar: AppBar(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

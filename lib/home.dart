@@ -473,9 +473,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
       appBar: AppBar(
-        backgroundColor: Colors.white,
+  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.account_circle, size: 40, color: Colors.black),
@@ -506,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onNavItemTapped,
-        backgroundColor: Colors.white,
+  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
         selectedItemColor: Colors.black,
         unselectedItemColor: Colors.grey,
         items: const [
