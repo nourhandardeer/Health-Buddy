@@ -54,9 +54,11 @@
     package="com.example.graduation_project">
 
     <!-- Move permissions outside the <application> tag -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
@@ -69,6 +71,9 @@
         android:label="graduation_project"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">   <!-- FIX: Added closing '>' -->
+        <meta-data
+                android:name="com.google.android.geo.API_KEY"
+                android:value="AIzaSyApMH6KoblerPG3VRlKHM3KOOkaqyB05hw"/>
 
         <activity
             android:name=".MainActivity"
@@ -84,9 +89,7 @@
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"/>
 
-            <meta-data
-                android:name="com.google.android.geo.API_KEY"
-                android:value="YOUR_API_KEY_HERE" />
+            
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
