@@ -24,35 +24,57 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      // Show a message if location services are disabled
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Location services are disabled.")),
+      );
+      return;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) return;
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("Location permission is permanently denied.")),
+        );
+        return;
+      }
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-    setState(() {
-      _currentPosition = position;
-    });
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to get location: $e")),
+      );
+    }
   }
-Future<void> _openGoogleMaps() async {
-  if (_currentPosition == null) return;
-  String url =
-      "https://www.google.com/maps/search/pharmacy/@${_currentPosition!.latitude},${_currentPosition!.longitude},14z";
 
-  if (await canLaunchUrl(Uri.parse(url))) {
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  Future<void> _openGoogleMaps() async {
+    if (_currentPosition == null) return;
+    String url =
+        "https://www.google.com/maps/search/pharmacy/@${_currentPosition!.latitude},${_currentPosition!.longitude},14z";
+
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Scaffold(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+
       appBar: AppBar(
         title: Text(widget.medData["name"] ?? "Medication Details"),
       ),
@@ -123,9 +145,12 @@ Future<void> _openGoogleMaps() async {
                           ),
                         },
                         onMapCreated: (GoogleMapController controller) {
+                          if (mounted) {
                             setState(() {
-                           _mapController = controller;
-                    });                        },
+                              _mapController = controller;
+                            });
+                          }
+                        },
                       ),
                     ),
                   ),
@@ -164,27 +189,26 @@ Future<void> _openGoogleMaps() async {
     );
   }
 
- Widget _buildDetailRow(IconData icon, String title, dynamic value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      children: [
-        Icon(icon, color: Colors.blue),
-        const SizedBox(width: 10),
-        Text(
-          "$title: ",
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        Expanded(
-          child: Text(
-            value?.toString() ?? "Not available",  // Convert value to string
-            style: const TextStyle(color: Colors.black54),
-            overflow: TextOverflow.ellipsis,
+  Widget _buildDetailRow(IconData icon, String title, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue),
+          const SizedBox(width: 10),
+          Text(
+            "$title: ",
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
+          Expanded(
+            child: Text(
+              value?.toString() ?? "Not available", // Convert value to string
+              style: const TextStyle(color: Colors.black54),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

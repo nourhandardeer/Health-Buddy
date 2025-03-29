@@ -32,7 +32,7 @@ class _FrequencySelectionPageState extends State<FrequencySelectionPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),

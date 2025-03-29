@@ -78,6 +78,8 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+
         appBar: _buildAppBar(context),
         body: const Center(child: CircularProgressIndicator()),
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:graduation_project/services/notification_service.dart';
 import 'refillrequest.dart';
 
 class DatePage extends StatefulWidget {
@@ -70,8 +71,7 @@ class _DatePageState extends State<DatePage> {
   bool get isSpecificDays =>
       widget.selectedFrequency == "Specific days of the week";
 
-  bool get isRecurringDays =>
-      widget.selectedFrequency.contains("Every X days");
+  bool get isRecurringDays => widget.selectedFrequency.contains("Every X days");
 
   bool get isRecurringWeeks =>
       widget.selectedFrequency.contains("Every X weeks");
@@ -95,13 +95,39 @@ class _DatePageState extends State<DatePage> {
 
   Future<void> saveSelection() async {
     try {
-      Map<String, dynamic> dataToSave = {'timestamp': FieldValue.serverTimestamp()};
+      Map<String, dynamic> dataToSave = {
+        'timestamp': FieldValue.serverTimestamp()
+      };
 
       if (isReminderSelection) {
         for (int i = 0; i < selectedHours.length; i++) {
           String formattedTime =
               "${selectedHours[i].toString().padLeft(2, '0')}:${selectedMinutes[i].toString().padLeft(2, '0')} ${isAMs[i] ? 'AM' : 'PM'}";
           dataToSave['reminderTime${i + 1}'] = formattedTime;
+
+          // Convert the selected time into a DateTime object
+          DateTime now = DateTime.now();
+          int hour = isAMs[i] ? selectedHours[i] : (selectedHours[i] % 12) + 12;
+          DateTime scheduledTime = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            hour,
+            selectedMinutes[i],
+          );
+
+          if (scheduledTime.isBefore(now)) {
+            scheduledTime = scheduledTime.add(const Duration(
+                days: 1)); // Schedule for next day if time already passed
+          }
+
+          // Schedule the notification
+          await NotificationService.scheduleNotification(
+            id: i + 1,
+            title: "Medication Reminder",
+            body: "Time to take ${widget.medicationName}",
+            scheduledTime: scheduledTime,
+          );
         }
       } else if (isOnceAWeek) {
         if (selectedSingleDay == null) {
@@ -120,7 +146,8 @@ class _DatePageState extends State<DatePage> {
         }
         dataToSave['specificDays'] = selectedDays.toList();
       } else if (recurringType.isNotEmpty) {
-        dataToSave['recurringFrequency'] = "Every $recurringValue $recurringType";
+        dataToSave['recurringFrequency'] =
+            "Every $recurringValue $recurringType";
         dataToSave['recurringValue'] = recurringValue;
         dataToSave['recurringType'] = recurringType;
       }
@@ -163,23 +190,32 @@ class _DatePageState extends State<DatePage> {
               children: [
                 Expanded(
                   child: CupertinoPicker(
-                    scrollController: FixedExtentScrollController(initialItem: selectedHours[index] - 1),
+                    scrollController: FixedExtentScrollController(
+                        initialItem: selectedHours[index] - 1),
                     itemExtent: 32.0,
                     onSelectedItemChanged: (hourIndex) {
                       setState(() => selectedHours[index] = hourIndex + 1);
                     },
-                    children: List.generate(12, (index) => Center(child: Text((index + 1).toString().padLeft(2, '0')))),
+                    children: List.generate(
+                        12,
+                        (index) => Center(
+                            child:
+                                Text((index + 1).toString().padLeft(2, '0')))),
                   ),
                 ),
                 const Text(":", style: TextStyle(fontSize: 20)),
                 Expanded(
                   child: CupertinoPicker(
-                    scrollController: FixedExtentScrollController(initialItem: selectedMinutes[index] ~/ 5),
+                    scrollController: FixedExtentScrollController(
+                        initialItem: selectedMinutes[index]),
                     itemExtent: 32.0,
                     onSelectedItemChanged: (minuteIndex) {
-                      setState(() => selectedMinutes[index] = minuteIndex * 5);
+                      setState(() => selectedMinutes[index] = minuteIndex);
                     },
-                    children: List.generate(12, (index) => Center(child: Text((index * 5).toString().padLeft(2, '0')))),
+                    children: List.generate(
+                        60,
+                        (index) => Center(
+                            child: Text(index.toString().padLeft(2, '0')))),
                   ),
                 ),
                 SizedBox(
@@ -187,8 +223,12 @@ class _DatePageState extends State<DatePage> {
                   child: CupertinoSegmentedControl<bool>(
                     groupValue: isAMs[index],
                     children: const {
-                      true: Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("AM")),
-                      false: Padding(padding: EdgeInsets.symmetric(vertical: 8.0), child: Text("PM")),
+                      true: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text("AM")),
+                      false: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text("PM")),
                     },
                     onValueChanged: (bool val) {
                       setState(() => isAMs[index] = val);
@@ -213,7 +253,9 @@ class _DatePageState extends State<DatePage> {
 
         return ListTile(
           title: Text(day),
-          trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+          trailing: isSelected
+              ? const Icon(Icons.check_circle, color: Colors.blue)
+              : null,
           onTap: () => setState(() => selectedSingleDay = day),
         );
       },
@@ -229,7 +271,9 @@ class _DatePageState extends State<DatePage> {
 
         return ListTile(
           title: Text(day),
-          trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : null,
+          trailing: isSelected
+              ? const Icon(Icons.check_circle, color: Colors.blue)
+              : null,
           onTap: () {
             setState(() {
               if (isSelected) {
@@ -250,7 +294,9 @@ class _DatePageState extends State<DatePage> {
     return Column(
       children: [
         const SizedBox(height: 20),
-        const Text("Every", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
+        const Text("Every",
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue)),
         const SizedBox(height: 20),
         SizedBox(
           height: 150,
@@ -260,13 +306,23 @@ class _DatePageState extends State<DatePage> {
             onSelectedItemChanged: (index) {
               setState(() => recurringValue = pickerValues[index]);
             },
-            children: pickerValues.map((value) => Center(child: Text(value.toString(), style: const TextStyle(fontSize: 24, color: Colors.blue)))).toList(),
+            children: pickerValues
+                .map((value) => Center(
+                    child: Text(value.toString(),
+                        style:
+                            const TextStyle(fontSize: 24, color: Colors.blue))))
+                .toList(),
           ),
         ),
         const SizedBox(height: 20),
         Text(
-          recurringType == 'Days' ? "Day(s)" : recurringType == 'Weeks' ? "Week(s)" : "Month(s)",
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+          recurringType == 'Days'
+              ? "Day(s)"
+              : recurringType == 'Weeks'
+                  ? "Week(s)"
+                  : "Month(s)",
+          style: const TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
         ),
       ],
     );
@@ -293,7 +349,9 @@ class _DatePageState extends State<DatePage> {
         title: const Text("Date & Time"),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () => Navigator.pop(context)),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -306,9 +364,11 @@ class _DatePageState extends State<DatePage> {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,
             padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text("Next", style: TextStyle(fontSize: 18, color: Colors.white)),
+          child: const Text("Next",
+              style: TextStyle(fontSize: 18, color: Colors.white)),
         ),
       ),
     );

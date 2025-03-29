@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:graduation_project/Refills/refill_details.dart';
-// import 'refill_detail';
+import 'package:graduation_project/services/notification_service.dart'; // Import NotificationService
 
 class RefillsPage extends StatefulWidget {
   const RefillsPage({Key? key}) : super(key: key);
@@ -30,8 +30,8 @@ class _RefillsPageState extends State<RefillsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-          // title: const Text("Refills Needed"),
-          ),
+        // title: const Text("Refills Needed"),
+      ),
       body: _buildRefillsList(user.uid),
     );
   }
@@ -62,10 +62,8 @@ class _RefillsPageState extends State<RefillsPage> {
               const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
             var data = documents[index].data() as Map<String, dynamic>;
-            debugPrint("Medication Name: ${data['name']}");
-            int inventory = (data['currentInventory'] is int)
-                ? data['currentInventory'] as int
-                : (data['currentInventory'] as double?)?.toInt() ?? 0;
+            String inventoryStr = data['currentInventory']?.trim() ?? '0';
+            int inventory = int.tryParse(inventoryStr) ?? 0;
 
             return Card(
               color: Colors.grey[200],
@@ -95,7 +93,7 @@ class _RefillsPageState extends State<RefillsPage> {
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     Text(
-                      "Reminder Time: ${data["reminderTime"] ?? "Not set"}",
+                      "Reminder Time: $reminderTime",
                       style: const TextStyle(fontSize: 14, color: Colors.blue),
                     ),
                   ],
