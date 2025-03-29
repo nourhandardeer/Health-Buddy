@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:graduation_project/pages/EditProfilePage.dart';
 import 'package:graduation_project/pages/loggin.dart';
 import 'package:graduation_project/pages/splash_screen.dart';
 import 'EmergencyContactPage.dart';
@@ -24,7 +25,8 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text('Change name, email, and photo'),
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () {
-              // Navigate to profile edit page
+              Navigator.push(context, MaterialPageRoute(builder: (context) => EditProfilePage()));
+
             },
           ),
           Divider(),

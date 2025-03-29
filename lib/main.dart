@@ -12,7 +12,6 @@ FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNo
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.initialize();
 
   
   if (kIsWeb) {
@@ -29,7 +28,7 @@ void main() async {
     await Firebase.initializeApp();
   }
 
-  
+  await NotificationService.initialize();
   await initializeNotifications();
 
   runApp(

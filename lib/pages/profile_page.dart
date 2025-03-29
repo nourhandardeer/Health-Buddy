@@ -14,8 +14,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   String _fullName = "Loading...";
   String _profileImageUrl = "images/user.png";
-  String _age = "Unknown";
-  String _illnesses = "No illnesses specified";
+  String _age = "";
+  String _illnesses = "";
   String? _linkedPatientName;
   String? _userId;
   List<Map<String, dynamic>> _emergencyContacts = [];
@@ -41,8 +41,8 @@ class _ProfilePageState extends State<ProfilePage> {
           _userId = user.uid;
           _fullName = "${data['firstName']} ${data['lastName']}";
           _profileImageUrl = data['profileImage']?.isNotEmpty == true ? data['profileImage'] : "images/user.png";
-          _age = data['age'] ?? "Unknown";
-          _illnesses = data['illnesses'] ?? "No illnesses specified";
+          _age = (data['age'] != null && data['age'].isNotEmpty) ? data['age'] : "Unknown";
+          _illnesses = (data['illnesses'] != null && data['illnesses'].isNotEmpty) ? data['illnesses'] : "No illnesses specified";
         });
 
         _fetchEmergencyContacts(user.uid);
