@@ -102,70 +102,80 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAppointmentsList() {
-    return StreamBuilder<List<QueryDocumentSnapshot>>(
-      stream: fetchAppointmentsCollection(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          print('Appointments Error: ${snapshot.error}');
-          return const Center(child: Text("Error loading appointments"));
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text("No appointments found"));
-        }
+  return StreamBuilder<List<QueryDocumentSnapshot>>(
+    stream: fetchAppointmentsCollection(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (snapshot.hasError) {
+        return const Center(child: Text("Error loading appointments"));
+      }
+      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        return const Center(child: Text("No appointments found"));
+      }
 
-        var appointments = snapshot.data!;
+      var appointments = snapshot.data!;
+      DateTime selectedDate = _selectedDay ?? _focusedDay;
 
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: appointments.length,
-          itemBuilder: (context, index) {
-            var appointment = appointments[index];
-            var data = appointment.data() as Map<String, dynamic>;
+      return ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: appointments.length,
+        itemBuilder: (context, index) {
+          var appointment = appointments[index];
+          var data = appointment.data() as Map<String, dynamic>;
 
-            String appointmentDate = data['appointmentDate'] ?? 'N/A';
-            String appointmentTime = data['appointmentTime'] ?? 'N/A';
-            String doctorName = data['doctorName'] ?? 'N/A';
-            // String location = data['location'] ?? 'N/A';
-            String specialty = data['specialty'] ?? 'N/A';
+          String appointmentDate = data['appointmentDate'] ?? '';
+          String appointmentTime = data['appointmentTime'] ?? 'N/A';
+          String doctorName = data['doctorName'] ?? 'N/A';
+          String specialty = data['specialty'] ?? 'N/A';
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.shade300,
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
+          DateTime? parsedAppointmentDate;
+          try {
+            parsedAppointmentDate = DateTime.parse(appointmentDate);
+          } catch (e) {
+            parsedAppointmentDate = null;
+          }
+
+          if (parsedAppointmentDate == null || !isSameDay(parsedAppointmentDate, selectedDate)) {
+            return const SizedBox.shrink();
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade300,
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.calendar_month, size: 40, color: Colors.blue),
+                title: Text("Dr. $doctorName"),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Date: $appointmentDate"),
+                    Text("Time: $appointmentTime"),
+                    // Text("Specialty: $specialty"),
                   ],
                 ),
-                child: ListTile(
-                  leading: const Icon(Icons.calendar_month, size: 40, color: Colors.blue),
-                  title: Text("Dr. $doctorName"),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Date: $appointmentDate"),
-                      Text("Time: $appointmentTime"),
-                      // Text("Location: $location"),
-                      Text("Specialty: $specialty"),
-                    ],
-                  ),
-                ),
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 
  // ================ Medications ===================
   Stream<List<QueryDocumentSnapshot>> fetchMedsCollectionAll() {
@@ -182,130 +192,189 @@ class _HomeScreenState extends State<HomeScreen> {
 
   }
 
-  Widget _buildMedicationsList() {
-    return StreamBuilder<List<QueryDocumentSnapshot>>(
-      stream: fetchMedsCollectionAll(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return const Center(child: Text("Error loading medications"));
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text("No medications found"));
-        }
+Widget _buildMedicationsList() {
+  return StreamBuilder<List<QueryDocumentSnapshot>>(
+    stream: fetchMedsCollectionAll(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (snapshot.hasError) {
+        return const Center(child: Text("Error loading medications"));
+      }
+      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        return const Center(child: Text("No medications found"));
+      }
 
-        var medications = snapshot.data!;
+      var medications = snapshot.data!;
+      final selectedDate = _selectedDay ?? _focusedDay;
+      final today = DateTime.now();
+      bool isToday = isSameDay(selectedDate, today);
+      String selectedDayName = getDayName(selectedDate.weekday).toLowerCase();
 
-        String selectedDayName = _selectedDay != null
-            ? getDayName(_selectedDay!.weekday).toLowerCase()
-            : getDayName(_focusedDay.weekday).toLowerCase();
-
-        var filteredMeds = medications.where((doc) {
-          var medData = doc.data() as Map<String, dynamic>;
-
-          String? frequency = medData['frequency'];
-          List<dynamic>? specificDays = medData['specificDays'];
-          String? recurringType = medData['recurringType'];
-          int? recurringValue = medData['recurringValue'];
-
-          if (frequency != null && frequency.isNotEmpty) {
-            String freq = frequency.toLowerCase();
-            if (freq == 'once a day' || freq == 'twice a day' || freq == '3 times a day') {
-              return true;
-            }
-            if (freq == 'once a week') {
-              String onceAWeekDay = (medData['onceAWeekDay'] ?? '').toString().toLowerCase();
-              return onceAWeekDay == selectedDayName;
-            }
-            return false;
-          }
-
-          if (specificDays != null && specificDays.isNotEmpty) {
-            String today = getDayName((_selectedDay ?? _focusedDay).weekday);
-            return specificDays.contains(today);
-          }
-
-          if (recurringType != null && recurringValue != null) {
-            if (medData['startDate'] == null) {
-              return false;
-            }
-
-            DateTime startDate = (medData['startDate'] as Timestamp).toDate();
-            DateTime selectedDate = _selectedDay ?? _focusedDay;
-            Duration diff = selectedDate.difference(startDate);
-            int diffValue = 0;
-
-            switch (recurringType.toLowerCase()) {
-              case 'day':
-                diffValue = diff.inDays;
-                break;
-              case 'week':
-                diffValue = (diff.inDays / 7).floor();
-                break;
-              case 'month':
-                diffValue = ((selectedDate.year - startDate.year) * 12 +
-                    selectedDate.month -
-                    startDate.month);
-                break;
-              default:
-                return false;
-            }
-
-            return diffValue >= 0 && diffValue % recurringValue == 0;
-          }
-
+      var filteredMeds = medications.where((doc) {
+        var medData = doc.data() as Map<String, dynamic>;
+        String frequency = (medData['frequency'] ?? '').toString().toLowerCase();
+        if (isToday &&
+            frequency == '3 times a day' &&
+            (_medTakenStatus['${doc.id}_1'] ?? false) &&
+            (_medTakenStatus['${doc.id}_2'] ?? false) &&
+            (_medTakenStatus['${doc.id}_3'] ?? false)) {
           return false;
-        }).toList();
+        }
+        if (isToday &&
+            frequency == 'twice a day' &&
+            (_medTakenStatus['${doc.id}_1'] ?? false) &&
+            (_medTakenStatus['${doc.id}_2'] ?? false)) {
+          return false;
+        }
 
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: filteredMeds.length,
-          itemBuilder: (context, index) {
-            var med = filteredMeds[index];
-            var medData = med.data() as Map<String, dynamic>;
+        List<dynamic>? specificDays = medData['specificDays'];
+        String? recurringType = medData['recurringType'];
+        int? recurringValue = medData['recurringValue'];
 
-            String rawTime = medData['reminderTime1'] ?? "";
-            String timeText = formatReminderTime(rawTime);
+        if (frequency.isNotEmpty) {
+          if (frequency == 'once a day' || frequency == 'twice a day' || frequency == '3 times a day') {
+            return true;
+          }
+          if (frequency == 'once a week') {
+            String onceAWeekDay = (medData['onceAWeekDay'] ?? '').toString().toLowerCase();
+            return onceAWeekDay == selectedDayName;
+          }
+        }
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(
-                    children: [
-                      Text(
-                        timeText,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
+        if (specificDays != null && specificDays.isNotEmpty) {
+          String todayName = getDayName(selectedDate.weekday);
+          return specificDays.contains(todayName);
+        }
+
+        if (recurringType != null && recurringValue != null) {
+          if (medData['startDate'] == null) return false;
+          DateTime startDate = (medData['startDate'] as Timestamp).toDate();
+          Duration diff = selectedDate.difference(startDate);
+          int diffValue = 0;
+
+          switch (recurringType.toLowerCase()) {
+            case 'day':
+              diffValue = diff.inDays;
+              break;
+            case 'week':
+              diffValue = (diff.inDays / 7).floor();
+              break;
+            case 'month':
+              diffValue = ((selectedDate.year - startDate.year) * 12 +
+                  selectedDate.month - startDate.month);
+              break;
+            default:
+              return false;
+          }
+
+          return diffValue >= 0 && diffValue % recurringValue == 0;
+        }
+
+        return false;
+      }).toList();
+
+      return ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: filteredMeds.length,
+        itemBuilder: (context, index) {
+          var med = filteredMeds[index];
+          var medData = med.data() as Map<String, dynamic>;
+
+          String frequency = (medData['frequency'] ?? '').toString().toLowerCase();
+          String rawTime = "";
+          String doseKey = med.id;
+          if (frequency == "twice a day") {
+            if (!(_medTakenStatus['${med.id}_1'] ?? false)) {
+              rawTime = medData['reminderTime1'] ?? "";
+              doseKey = '${med.id}_1';
+            } else {
+              rawTime = medData['reminderTime2'] ?? "";
+              doseKey = '${med.id}_2';
+            }
+          } else if (frequency == "3 times a day") {
+            if (!(_medTakenStatus['${med.id}_1'] ?? false)) {
+              rawTime = medData['reminderTime1'] ?? "";
+              doseKey = '${med.id}_1';
+            } else if (!(_medTakenStatus['${med.id}_2'] ?? false)) {
+              rawTime = medData['reminderTime2'] ?? "";
+              doseKey = '${med.id}_2';
+            } else {
+              rawTime = medData['reminderTime3'] ?? "";
+              doseKey = '${med.id}_3';
+            }
+          } else {
+            rawTime = medData['reminderTime1'] ?? "";
+          }
+
+          String timeText = formatReminderTime(rawTime);
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      timeText,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 12),
-                      if (isTodaySelected())
-                        Checkbox(
-                          value: _medTakenStatus[med.id] ?? false,
-                          onChanged: (_medTakenStatus[med.id] ?? false)
-                              ? null
-                              : (bool? value) async {
-                                  if (value == null || !value) return;
+                    ),
+                    const SizedBox(height: 12),
+                    if (!(_medTakenStatus[doseKey] ?? false) && isToday)
+                      Checkbox(
+                        value: false,
+                        onChanged: (bool? value) async {
+                          if (value == null || !value) return;
 
-                                  setState(() {
-                                    _medTakenStatus[med.id] = true;
-                                  });
+                          setState(() {
+                            _medTakenStatus[doseKey] = true;
+                          });
 
-                                  final dosageStr = medData['dosage'].toString();
-                                  await markMedicationAsTaken(med.id, dosageStr);
-                                },
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                          final dosageStr = medData['dosage'].toString();
+                          await markMedicationAsTaken(doseKey, dosageStr);
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: Text(medData['name'] ?? "Medication Info"),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Dosage: ${medData['dosage']} ${medData['unit']}"),
+                                const SizedBox(height: 8),
+                                Text("Frequency: ${medData['frequency']}"),
+                                const SizedBox(height: 8),
+                                if (medData['notes'] != null && medData['notes'].toString().isNotEmpty)
+                                  Text("Notes: ${medData['notes']}"),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text("Close"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -349,14 +418,25 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+                )
+
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+
+
+bool isFutureDay(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  return date.isAfter(today);
+}
+
 
   bool isTodaySelected() {
     final today = DateTime.now();
