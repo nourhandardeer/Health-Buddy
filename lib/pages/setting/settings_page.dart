@@ -7,6 +7,7 @@ import 'package:graduation_project/pages/EmergencyContactPage.dart';
 import 'package:graduation_project/services/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'ChangePasswordPage.dart'; // Import the ChangePasswordPage
+import 'SetPinPage.dart'; // Import the SetPinPage (you can create this page for setting the PIN)
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -60,17 +61,14 @@ class SettingsPage extends StatelessWidget {
           ),
           Divider(),
 
-          // Security Settings (Change Password)
+          // Security Settings (Change Password or Set PIN)
           ListTile(
             leading: Icon(Icons.lock, color: Colors.purple),
             title: Text('Security'),
-            subtitle: Text('Change password, set PIN'),
+            subtitle: Text('Change password or set PIN'),
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ChangePasswordPage()),
-              );
+              _showSecurityOptions(context);
             },
           ),
           Divider(),
@@ -103,6 +101,40 @@ class SettingsPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // Function to show the Security options dialog
+  void _showSecurityOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Wrap(
+          children: [
+            ListTile(
+              leading: Icon(Icons.lock_open, color: Colors.blue),
+              title: Text('Change Password'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ChangePasswordPage()),
+                );
+              },
+            ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.pin, color: Colors.green),
+              title: Text('Set PIN'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SetPinPage()),
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }

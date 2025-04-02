@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:graduation_project/pages/splash_screen.dart';
 import 'package:graduation_project/home.dart';
 import 'package:graduation_project/services/notification_service.dart';
 import 'package:graduation_project/services/theme_provider.dart';
+import 'package:graduation_project/pages/setting/PinVerificationPage.dart'; // Import the PIN verification page
 
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -113,7 +115,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      home: const AuthCheck(),
+      home: const AuthCheck(), // Home check
     );
   }
 }
@@ -123,14 +125,37 @@ class AuthCheck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
+    return StreamBuilder<User?>( 
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen(); // Keeps splash screen until Firebase loads
         }
-        return snapshot.hasData ? const HomeScreen() : const SplashScreen();
+
+        // Check if the PIN is set before navigating to HomeScreen
+        return FutureBuilder<bool>(
+          future: _checkIfPinSet(),
+          builder: (context, pinSnapshot) {
+            if (pinSnapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            }
+
+            if (pinSnapshot.hasData && pinSnapshot.data == true) {
+              // Show PIN verification page if the PIN is set
+              return  PinVerificationPage();
+            }
+
+            // If no PIN is set, navigate directly to the home screen
+            return snapshot.hasData ? const HomeScreen() : const SplashScreen();
+          },
+        );
       },
     );
+  }
+
+  Future<bool> _checkIfPinSet() async {
+    final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+    String? storedPin = await _secureStorage.read(key: 'pin');
+    return storedPin != null;
   }
 }
