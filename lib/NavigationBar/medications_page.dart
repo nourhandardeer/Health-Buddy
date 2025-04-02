@@ -21,7 +21,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
       body: _buildMedicationsList(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

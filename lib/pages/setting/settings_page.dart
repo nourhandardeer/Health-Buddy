@@ -3,9 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/pages/EditProfilePage.dart';
 import 'package:graduation_project/pages/loggin.dart';
 import 'package:graduation_project/pages/splash_screen.dart';
-import 'EmergencyContactPage.dart';
+import 'package:graduation_project/pages/EmergencyContactPage.dart';
 import 'package:graduation_project/services/theme_provider.dart';
 import 'package:provider/provider.dart';
+import 'ChangePasswordPage.dart'; // Import the ChangePasswordPage
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -42,7 +43,6 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text('Manage alerts and reminders'),
             trailing: Switch(value: true, onChanged: (bool value) {}),
           ),
-
           Divider(),
 
           // Emergency Contacts
@@ -60,14 +60,17 @@ class SettingsPage extends StatelessWidget {
           ),
           Divider(),
 
-          // Security Settings
+          // Security Settings (Change Password)
           ListTile(
             leading: Icon(Icons.lock, color: Colors.purple),
             title: Text('Security'),
             subtitle: Text('Change password, set PIN'),
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () {
-              // Navigate to security settings
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ChangePasswordPage()),
+              );
             },
           ),
           Divider(),

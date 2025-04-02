@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:graduation_project/Refills/refill_details.dart';
 import 'package:graduation_project/services/notification_service.dart'; // Import NotificationService
+import 'package:intl/intl.dart';
 
 class RefillsPage extends StatefulWidget {
   const RefillsPage({Key? key}) : super(key: key);
@@ -59,36 +60,45 @@ class _RefillsPageState extends State<RefillsPage> {
               const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
             var data = documents[index].data() as Map<String, dynamic>;
-            debugPrint("Medication Name: ${data['name']}");
 
             int inventory = (data['currentInventory'] is int)
                 ? data['currentInventory'] as int
                 : (data['currentInventory'] as double?)?.toInt() ?? 0;
 
-            String reminderTime = data["reminderTime"] ?? "Not set";
+            String reminderTime1 = data["reminderTime1"] ?? "Not set";
+            String reminderTime2 = data["reminderTime2"] ?? "Not set";
 
-            // Convert reminderTime to DateTime object
-            DateTime? scheduledTime;
-            if (reminderTime != "Not set") {
-              List<String> timeParts = reminderTime.split(":");
-              if (timeParts.length == 2) {
-                int hour = int.tryParse(timeParts[0]) ?? 0;
-                int minute = int.tryParse(timeParts[1]) ?? 0;
-                DateTime now = DateTime.now();
-                scheduledTime = DateTime(now.year, now.month, now.day, hour, minute);
-                  print("Scheduled Notification for: $scheduledTime");
+            // Convert reminder times to DateTime objects
+            DateTime? scheduledTime1;
+            DateTime? scheduledTime2;
 
-              }
+            if (reminderTime1 != "Not set") {
+              scheduledTime1 = _convertTimeToDateTime(reminderTime1);
             }
 
-            // Schedule notification if inventory is low
-            if (inventory < 5 && scheduledTime != null) {
-              NotificationService.scheduleNotification(
-                id: index, // Unique ID for each notification
-                title: "Refill Reminder: ${data["name"]}",
-                body: "Your medication inventory is low! Please refill soon.",
-                scheduledTime: scheduledTime,
-              );
+            if (reminderTime2 != "Not set") {
+              scheduledTime2 = _convertTimeToDateTime(reminderTime2);
+            }
+
+            // Schedule notifications if inventory is low
+            if (inventory < 5) {
+              if (scheduledTime1 != null) {
+                NotificationService.scheduleNotification(
+                  id: index,
+                  title: "Refill Reminder: ${data["name"]}",
+                  body: "Your medication inventory is low! Please refill soon.",
+                  scheduledTime: scheduledTime1,
+                );
+              }
+
+              if (scheduledTime2 != null) {
+                NotificationService.scheduleNotification(
+                  id: index + 1, // Unique ID for this notification
+                  title: "Refill Reminder: ${data["name"]}",
+                  body: "Your medication inventory is low! Please refill soon.",
+                  scheduledTime: scheduledTime2,
+                );
+              }
             }
 
             return Card(
@@ -119,7 +129,7 @@ class _RefillsPageState extends State<RefillsPage> {
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     Text(
-                      "Reminder Time: $reminderTime",
+                      "Reminder Time: $reminderTime1 and $reminderTime2",
                       style: const TextStyle(fontSize: 14, color: Colors.blue),
                     ),
                   ],
@@ -138,5 +148,12 @@ class _RefillsPageState extends State<RefillsPage> {
         );
       },
     );
+  }
+
+  DateTime _convertTimeToDateTime(String timeStr) {
+    DateFormat format = DateFormat("hh:mm a");
+    DateTime time = format.parse(timeStr);
+    DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, time.hour, time.minute);
   }
 }

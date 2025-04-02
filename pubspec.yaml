@@ -46,6 +46,8 @@ flutter:
      - images/logo.png
      - images/syringe.png
      - images/user.png
+    #  - assets/sounds/notification_sound.mp3
+
 
   #   - images/a_dot_ham.jpeg
 

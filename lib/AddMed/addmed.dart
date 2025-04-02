@@ -89,7 +89,8 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.white),
+      appBar: AppBar(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

@@ -36,7 +36,7 @@ void main() async {
 
   runApp(
     ChangeNotifierProvider(
-      create: (context) => ThemeProvider()..loadTheme(),
+      create: (context) => ThemeProvider(),
       child: DevicePreview(
         enabled: !kReleaseMode, // Disable in production
         builder: (context) => const MyApp(),
@@ -85,9 +85,34 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
       themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      
+      theme: ThemeData(
+        brightness: Brightness.light,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.black), 
+          bodyMedium: TextStyle(color: Colors.black87),
+          titleLarge: TextStyle(color: Colors.black), 
+        ),
+        colorScheme: const ColorScheme.light(
+          background: Colors.white,
+          onBackground: Colors.black,
+        ),
+      ),
+      
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white), 
+          bodyMedium: TextStyle(color: Colors.white70),
+          titleLarge: TextStyle(color: Colors.white), 
+        ),
+        colorScheme: const ColorScheme.dark(
+          background: Colors.black,
+          onBackground: Colors.white,
+        ),
+      ),
+
       home: const AuthCheck(),
     );
   }

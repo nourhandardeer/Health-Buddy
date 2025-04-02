@@ -7,7 +7,7 @@ import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:graduation_project/NavigationBar/medications_page.dart';
 import 'package:graduation_project/NavigationBar/refills_page.dart';
 import 'package:graduation_project/pages/profile_page.dart';
-import 'package:graduation_project/pages/settings_page.dart';
+import 'package:graduation_project/pages/setting/settings_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
