@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:graduation_project/services/MedicineDatabaseHelper.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -35,7 +36,9 @@ void main() async {
 
   await NotificationService.initialize();
   await initializeNotifications();
-
+  final databaseHelper = MedicineDatabaseHelper.instance;
+  await databaseHelper.database; // Wait for the database to be initialized
+  await databaseHelper.debugDatabase();
   runApp(
     ChangeNotifierProvider(
       create: (context) => ThemeProvider(),

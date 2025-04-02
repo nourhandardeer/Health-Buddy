@@ -32,7 +32,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   timezone: ^0.10.0
   flutter_timezone: ^4.1.0
-  
+  sqflite:
+  path_provider:
+
 
 dev_dependencies:
   flutter_test:
@@ -42,12 +44,13 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-     - images/photo2.png
-     - images/photo3.png
-     - images/drugs.png
-     - images/logo.png
-     - images/syringe.png
-     - images/user.png
+    - images/photo2.png
+    - images/photo3.png
+    - images/drugs.png
+    - images/logo.png
+    - images/syringe.png
+    - images/user.png
+    - assets/
     #  - assets/sounds/notification_sound.mp3
 
 
