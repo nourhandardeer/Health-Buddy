@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sqflite/sqflite.dart';
+import '../services/MedicineDatabaseHelper.dart';
 import '../services/firestore_service.dart';
 import 'times.dart';
 
@@ -12,6 +14,10 @@ class AddMedicationPage extends StatefulWidget {
 class _AddMedicationPageState extends State<AddMedicationPage> {
   final TextEditingController medicationController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
+ // final MedicationService medicationService = MedicationService();
+  List<String> medicationSuggestions = [];
+  final _databaseHelper = MedicineDatabaseHelper.instance;
+  List<String> _suggestions = [];
   String? selectedUnit;
   int dosage = 1;
   String? tempDocId;
@@ -24,6 +30,52 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
   ];
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late Future<Database> _databaseInitFuture;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDatabaseReady(); // Just check if it's ready
+    _loadInitialSuggestions();
+    _databaseHelper.debugDatabase();
+  }
+
+  Future<void> _checkDatabaseReady() async {
+    print("Checking if database is ready in AddMedicationPage...");
+    // Accessing the database getter will ensure it's initialized
+    await _databaseHelper.database;
+    print("Database ready for use in AddMedicationPage.");
+  }
+
+  Future<void> _loadInitialSuggestions() async {
+    await _getOfflineSuggestions("");
+  }
+
+  Future<void> _getOfflineSuggestions(String query) async {
+    print("_getOfflineSuggestions called with query: $query");
+    if (query.isEmpty) {
+      setState(() {
+        _suggestions = [];
+      });
+      return;
+    }
+
+    final db = await _databaseHelper.database;
+    final List<Map<String, dynamic>> results = await db.rawQuery(
+      "SELECT name FROM ${MedicineDatabaseHelper.table} WHERE name LIKE ? COLLATE NOCASE",
+      ['$query%'],
+    );
+
+    setState(() {
+      _suggestions = results.map((row) => row['name'] as String).toList();
+    });
+
+    print("🔍 Results found: ${_suggestions.length}");
+  }
+
+
+
 
   Future<void> _saveMedicationData() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -89,7 +141,8 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.white),
+      appBar: AppBar(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -100,16 +153,69 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
-            TextField(
-              controller: medicationController,
-              decoration: InputDecoration(
-                labelText: "Medication Name",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) async {
+                if (textEditingValue.text.isEmpty) {
+                  return const Iterable<String>.empty();
+                }
+                await _getOfflineSuggestions(textEditingValue.text);
+                print("_suggestions list after fetching for '${textEditingValue.text}': $_suggestions");
+                return _suggestions.where((name) {
+                  return name.toLowerCase().startsWith(textEditingValue.text.toLowerCase());
+                });
+              },
+              onSelected: (String selection) {
+                medicationController.text = selection;
+              },
+              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    labelText: "Medication Name",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onChanged: (text) {
+                    if (text.isNotEmpty) _getOfflineSuggestions(text);
+                  },
+                  onEditingComplete: onEditingComplete,
+                );
+              },
+              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+                if (options.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 4.0,
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 200.0,
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: options.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final String option = options.elementAt(index);
+                          return InkWell(
+                            onTap: () {
+                              onSelected(option);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              child: Text(option),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 30),
+
+
+          const SizedBox(height: 30),
             const Text(
               "Select Unit",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

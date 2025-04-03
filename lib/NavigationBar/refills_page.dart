@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:graduation_project/Refills/refill_details.dart';
 import 'package:graduation_project/services/notification_service.dart'; // Import NotificationService
+import 'package:intl/intl.dart';
 
 class RefillsPage extends StatefulWidget {
   const RefillsPage({Key? key}) : super(key: key);
@@ -28,10 +29,7 @@ class _RefillsPageState extends State<RefillsPage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        // title: const Text("Refills Needed"),
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _buildRefillsList(user.uid),
     );
   }
@@ -62,8 +60,46 @@ class _RefillsPageState extends State<RefillsPage> {
               const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
             var data = documents[index].data() as Map<String, dynamic>;
-            String inventoryStr = data['currentInventory']?.trim() ?? '0';
-            int inventory = int.tryParse(inventoryStr) ?? 0;
+
+            int inventory = (data['currentInventory'] is int)
+                ? data['currentInventory'] as int
+                : (data['currentInventory'] as double?)?.toInt() ?? 0;
+
+            String reminderTime1 = data["reminderTime1"] ?? "Not set";
+            String reminderTime2 = data["reminderTime2"] ?? "Not set";
+
+            // Convert reminder times to DateTime objects
+            DateTime? scheduledTime1;
+            DateTime? scheduledTime2;
+
+            if (reminderTime1 != "Not set") {
+              scheduledTime1 = _convertTimeToDateTime(reminderTime1);
+            }
+
+            if (reminderTime2 != "Not set") {
+              scheduledTime2 = _convertTimeToDateTime(reminderTime2);
+            }
+
+            // Schedule notifications if inventory is low
+            if (inventory < 5) {
+              if (scheduledTime1 != null) {
+                NotificationService.scheduleNotification(
+                  id: index,
+                  title: "Refill Reminder: ${data["name"]}",
+                  body: "Your medication inventory is low! Please refill soon.",
+                  scheduledTime: scheduledTime1,
+                );
+              }
+
+              if (scheduledTime2 != null) {
+                NotificationService.scheduleNotification(
+                  id: index + 1, // Unique ID for this notification
+                  title: "Refill Reminder: ${data["name"]}",
+                  body: "Your medication inventory is low! Please refill soon.",
+                  scheduledTime: scheduledTime2,
+                );
+              }
+            }
 
             return Card(
               color: Colors.grey[200],
@@ -92,10 +128,10 @@ class _RefillsPageState extends State<RefillsPage> {
                       "Current Inventory: ${inventory} ${data["unit"] ?? ""}",
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
-                    // Text(
-                    //   "Reminder Time: $reminderTime",
-                    //   style: const TextStyle(fontSize: 14, color: Colors.blue),
-                    // ),
+                    Text(
+                      "Reminder Time: $reminderTime",
+                      style: const TextStyle(fontSize: 14, color: Colors.blue),
+                    ),
                   ],
                 ),
                 onTap: () {
@@ -112,5 +148,12 @@ class _RefillsPageState extends State<RefillsPage> {
         );
       },
     );
+  }
+
+  DateTime _convertTimeToDateTime(String timeStr) {
+    DateFormat format = DateFormat("hh:mm a");
+    DateTime time = format.parse(timeStr);
+    DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, time.hour, time.minute);
   }
 }

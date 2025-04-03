@@ -13,6 +13,8 @@ dependencies:
   flutter:
     sdk: flutter
   device_preview: ^1.2.0
+  flutter_secure_storage: ^9.2.4
+
   provider: ^6.1.3
   shared_preferences: ^2.0.15
 
@@ -30,7 +32,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   timezone: ^0.10.0
   flutter_timezone: ^4.1.0
-  
+  sqflite:
+  path_provider:
+
 
 dev_dependencies:
   flutter_test:
@@ -40,12 +44,15 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-     - images/photo2.png
-     - images/photo3.png
-     - images/drugs.png
-     - images/logo.png
-     - images/syringe.png
-     - images/user.png
+    - images/photo2.png
+    - images/photo3.png
+    - images/drugs.png
+    - images/logo.png
+    - images/syringe.png
+    - images/user.png
+    - assets/
+    #  - assets/sounds/notification_sound.mp3
+
 
   #   - images/a_dot_ham.jpeg
 

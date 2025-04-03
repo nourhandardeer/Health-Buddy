@@ -4,12 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:graduation_project/services/MedicineDatabaseHelper.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:graduation_project/pages/splash_screen.dart';
 import 'package:graduation_project/home.dart';
 import 'package:graduation_project/services/notification_service.dart';
 import 'package:graduation_project/services/theme_provider.dart';
+import 'package:graduation_project/pages/setting/PinVerificationPage.dart'; // Import the PIN verification page
 
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -33,10 +36,12 @@ void main() async {
 
   await NotificationService.initialize();
   await initializeNotifications();
-
+  final databaseHelper = MedicineDatabaseHelper.instance;
+  await databaseHelper.database; // Wait for the database to be initialized
+  await databaseHelper.debugDatabase();
   runApp(
     ChangeNotifierProvider(
-      create: (context) => ThemeProvider()..loadTheme(),
+      create: (context) => ThemeProvider(),
       child: DevicePreview(
         enabled: !kReleaseMode, // Disable in production
         builder: (context) => const MyApp(),
@@ -85,10 +90,35 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
       themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const AuthCheck(),
+      
+      theme: ThemeData(
+        brightness: Brightness.light,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.black), 
+          bodyMedium: TextStyle(color: Colors.black87),
+          titleLarge: TextStyle(color: Colors.black), 
+        ),
+        colorScheme: const ColorScheme.light(
+          background: Colors.white,
+          onBackground: Colors.black,
+        ),
+      ),
+      
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white), 
+          bodyMedium: TextStyle(color: Colors.white70),
+          titleLarge: TextStyle(color: Colors.white), 
+        ),
+        colorScheme: const ColorScheme.dark(
+          background: Colors.black,
+          onBackground: Colors.white,
+        ),
+      ),
+
+      home: const AuthCheck(), // Home check
     );
   }
 }
@@ -98,14 +128,37 @@ class AuthCheck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
+    return StreamBuilder<User?>( 
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen(); 
         }
-        return snapshot.hasData ? const HomeScreen() : const SplashScreen();
+
+        // Check if the PIN is set before navigating to HomeScreen
+        return FutureBuilder<bool>(
+          future: _checkIfPinSet(),
+          builder: (context, pinSnapshot) {
+            if (pinSnapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            }
+
+            if (pinSnapshot.hasData && pinSnapshot.data == true) {
+              // Show PIN verification page if the PIN is set
+              return  PinVerificationPage();
+            }
+
+            // If no PIN is set, navigate directly to the home screen
+            return snapshot.hasData ? const HomeScreen() : const SplashScreen();
+          },
+        );
       },
     );
+  }
+
+  Future<bool> _checkIfPinSet() async {
+    final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+    String? storedPin = await _secureStorage.read(key: 'pin');
+    return storedPin != null;
   }
 }
