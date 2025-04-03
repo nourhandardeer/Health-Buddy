@@ -92,10 +92,10 @@ class _RefillsPageState extends State<RefillsPage> {
                       "Current Inventory: ${inventory} ${data["unit"] ?? ""}",
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
-                    Text(
-                      "Reminder Time: $reminderTime",
-                      style: const TextStyle(fontSize: 14, color: Colors.blue),
-                    ),
+                    // Text(
+                    //   "Reminder Time: $reminderTime",
+                    //   style: const TextStyle(fontSize: 14, color: Colors.blue),
+                    // ),
                   ],
                 ),
                 onTap: () {

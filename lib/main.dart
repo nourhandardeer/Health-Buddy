@@ -102,7 +102,7 @@ class AuthCheck extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SplashScreen(); // Keeps splash screen until Firebase loads
+          return const SplashScreen(); 
         }
         return snapshot.hasData ? const HomeScreen() : const SplashScreen();
       },
