@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:graduation_project/services/firestore_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:graduation_project/NavigationBar/medications_page.dart';
@@ -21,6 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<String, bool> _medTakenStatus = {};
+  final FirestoreService _firestoreService = FirestoreService();
+
 
   @override
   void initState() {
@@ -34,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ================ user name===================
+
   Widget _buildUserName() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -69,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================ Calendar ===================
+
   Widget _buildCalendar() {
     return TableCalendar(
       firstDay: DateTime.utc(2020, 1, 1),
@@ -141,9 +144,9 @@ class _HomeScreenState extends State<HomeScreen> {
             if (appointmentDay == oneDayAfter) {
               final doctorName = data['doctorName'] ?? 'Unknown';
               final appointmentTime = data['appointmentTime'] ?? 'Unknown';
-              reminders.add("you have an appointment tomorrow with D. $doctorName in $appointmentTime");            }
+              reminders.add("you have an appointment tomorrow with Dr. $doctorName at $appointmentTime");            }
           } catch (e) {
-            print("❌ Error parsing date: $appointmentDateStr — $e");
+            print(" Error parsing date: $appointmentDateStr — $e");
             continue;
           }
         }
@@ -198,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-            // ✅ قائمة المواعيد
+
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -555,97 +558,96 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return time.trim();
   }
-
-  Future<void> loadTakenMedsForToday() async {
+  void loadTakenMedsForToday() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final now = DateTime.now();
     final todayDate = "${now.year}-${now.month}-${now.day}";
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('medsTaken')
-        .where('date', isEqualTo: todayDate)
-        .get();
+    try {
+      List<String> linkedUsers = await _firestoreService.getLinkedUserIds();
+      print("load taken meds for $linkedUsers");
 
-    setState(() {
-      for (var doc in snapshot.docs) {
-        final medId = doc['medId'];
-        _medTakenStatus[medId] = true;
+      for (String userId in linkedUsers) {
+        QuerySnapshot snapshot = await _firestoreService.firestore
+            .collection('users')
+            .doc(userId) // 🔹 Use the correct userId (linked patient/emergency)
+            .collection('medsTaken')
+            .where('date', isEqualTo: todayDate)
+            .get();
+
+        if (snapshot.docs.isNotEmpty) {
+          setState(() {
+            for (var doc in snapshot.docs) {
+              final medId = doc['medId'];
+              _medTakenStatus[medId] = true;
+            }
+          });
+        }
       }
-    });
- }
-  // Widget _buildUpcomingAppointmentsReminder(List<QueryDocumentSnapshot> appointments) {
-  //   final now = DateTime.now();
-  //   final today = DateTime(now.year, now.month, now.day);
-  //
-  //   List<Widget> reminders = [];
-  //
-  //   for (var appointment in appointments) {
-  //     var data = appointment.data() as Map<String, dynamic>;
-  //     String appointmentDateStr = data['appointmentDate'] ?? '';
-  //     String doctorName = data['doctorName'] ?? 'Doctor';
-  //
-  //     DateTime? appointmentDate;
-  //     try {
-  //       appointmentDate = DateTime.parse(appointmentDateStr);
-  //     } catch (_) {
-  //       continue;
-  //     }
-  //
-  //     final diffDays = appointmentDate.difference(today).inDays;
-  //
-  //     if (diffDays == 2) {
-  //       reminders.add(Text("🔔 you have an appointment with D. $doctorName after 2 days (${appointmentDateStr})"));
-  //     } else if (diffDays == 1) {
-  //       reminders.add(Text("🔔 you have an appointment with D. $doctorName tomorrow  (${appointmentDateStr})"));
-  //     }
-  //   }
-  //
-  //   if (reminders.isEmpty) return const SizedBox.shrink();
-  //
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         const Text("Upcoming Appointments:",
-  //             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-  //         ...reminders,
-  //       ],
-  //     ),
-  //   );
-  // }
+    } catch (e) {
+      print("Error loading taken medications: $e");
+    }
+  }
+
 
   Future<void> markMedicationAsTaken(String medId, String dosageStr) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    if (medId.isEmpty || medId == null) {
+      print("Invalid medication ID");
+      return;
+    }
     final now = DateTime.now();
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('medsTaken')
-          .doc('${medId}_${now.toIso8601String()}')
-          .set({
-        'medId': medId,
-        'takenAt': now,
-        'date': "${now.year}-${now.month}-${now.day}",
-      });
+      // 🔹 Get all linked user IDs (patient + emergency contacts)
+      // 🔹 Use saveData to handle linked users and data saving
+      String? docId = await _firestoreService.saveData(
+        collection: 'users/${user.uid}/medsTaken', // Save under current user's medsTaken subcollection
+        data: {
+          'medId': medId,
+          'takenAt': now,
+          'date': "${now.year}-${now.month}-${now.day}",
+        },
+        context: context,
+      );
+
+      if (docId == null) {
+        // Error occurred during saveData (SnackBar already shown by saveData)
+        return;
+      }
+
+
+      List<String> linkedUsers = await _firestoreService.getLinkedUserIds();
+      print("mark taken meds for $linkedUsers");
+      for (String userId in linkedUsers) {
+        if (mounted) {
+          setState(() {
+            _medTakenStatus[medId] = true;
+          });
+        }
+      }
 
 
       final medDocRef = FirebaseFirestore.instance.collection('meds').doc(medId);
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final medSnapshot = await transaction.get(medDocRef);
-        if (!medSnapshot.exists) return;
+        if (!medSnapshot.exists) {
+          print("Medication document does not exist.");
+          return;
+        }
 
         final medData = medSnapshot.data() as Map<String, dynamic>;
-        final currentInventory = (medData['currentInventory'] ?? 0).toDouble();
+        if (medData == null) {
+          print("Medication data is null. Check Firestore structure.");
+          return;
+        }
+
+        final currentInventory = (medData?['currentInventory'] ?? 0).toDouble();
         final dosage = double.tryParse(dosageStr) ?? 0;
 
         final newInventory = (currentInventory - dosage).clamp(0, double.infinity);
@@ -653,7 +655,7 @@ class _HomeScreenState extends State<HomeScreen> {
         transaction.update(medDocRef, {'currentInventory': newInventory});
       });
     } catch (e) {
-      print('Error updating inventory: $e');
+      print('Error updating medication: $e');
     }
   }
   Future<void> loadTakenMedsForDate(DateTime date) async {
@@ -697,9 +699,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.account_circle, size: 40, color: Colors.black),
