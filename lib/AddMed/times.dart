@@ -30,18 +30,13 @@ class _TimesPageState extends State<TimesPage> {
     "Once a day",
     "Twice a day",
     "3 times a day",
-    "Every other day",
+    // "Every other day",
     "Once a week",
     "Only as needed",
-    "Other",
+    "Specific days of the week",
   ];
 
-  final List<String> otherOptions = [
-    "Specific days of the week",
-    "Every X days",
-    "Every X weeks",
-    "Every X months",
-  ];
+
 
   Future<void> saveFrequency() async {
     if (selectedFrequency == null) {
@@ -120,7 +115,6 @@ class _TimesPageState extends State<TimesPage> {
     }
   }
 
-  // فتح قائمة Other Options
   void _toggleOtherOptions() {
     setState(() {
       showOtherOptions = !showOtherOptions;
@@ -177,55 +171,55 @@ class _TimesPageState extends State<TimesPage> {
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
-                    ...otherOptions.map((option) {
-                      return ListTile(
-                        title: Text(option),
-                        trailing: selectedFrequency == option
-                            ? const Icon(Icons.check_circle, color: Colors.blue)
-                            : null,
-                        onTap: () {
-                          // لما يدوس على Every X ➡ يروح مباشرة على DatePage
-                          if (option == "Every X days" ||
-                              option == "Every X weeks" ||
-                              option == "Every X months") {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DatePage(
-                                  medicationName: widget.medicationName,
-                                  selectedUnit: widget.selectedUnit,
-                                  selectedFrequency: option,
-                                  documentId: widget.documentId,
-                                ),
-                              ),
-                            );
-                          }
+                    // ...otherOptions.map((option) {
+                    //   return ListTile(
+                    //     title: Text(option),
+                    //     trailing: selectedFrequency == option
+                    //         ? const Icon(Icons.check_circle, color: Colors.blue)
+                    //         : null,
+                    //     onTap: () {
+                    //       // لما يدوس على Every X ➡ يروح مباشرة على DatePage
+                    //       if (option == "Every X days" ||
+                    //           option == "Every X weeks" ||
+                    //           option == "Every X months") {
+                    //         Navigator.push(
+                    //           context,
+                    //           MaterialPageRoute(
+                    //             builder: (context) => DatePage(
+                    //               medicationName: widget.medicationName,
+                    //               selectedUnit: widget.selectedUnit,
+                    //               selectedFrequency: option,
+                    //               documentId: widget.documentId,
+                    //             ),
+                    //           ),
+                    //         );
+                    //       }
 
                           // Specific days of the week ➡ يروح مباشرة على DatePage
-                          else if (option == "Specific days of the week") {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DatePage(
-                                  medicationName: widget.medicationName,
-                                  selectedUnit: widget.selectedUnit,
-                                  selectedFrequency: option,
-                                  documentId: widget.documentId,
-                                ),
-                              ),
-                            );
-                          }
+                          // else if (option == "Specific days of the week") {
+                          //   Navigator.push(
+                          //     context,
+                          //     MaterialPageRoute(
+                          //       builder: (context) => DatePage(
+                          //         medicationName: widget.medicationName,
+                          //         selectedUnit: widget.selectedUnit,
+                          //         selectedFrequency: option,
+                          //         documentId: widget.documentId,
+                          //       ),
+                          //     ),
+                          //   );
+                          // }
 
-                          // اختيار بسيط ➡ حدده عادي
-                          else {
-                            setState(() {
-                              selectedFrequency = option;
-                              showOtherOptions = false;
-                            });
-                          }
-                        },
-                      );
-                    }).toList(),
+
+                    //       else {
+                    //         setState(() {
+                    //           selectedFrequency = option;
+                    //           showOtherOptions = false;
+                    //         });
+                    //       }
+                    //     },
+                    //   );
+                    // }).toList(),
                   ],
                 ],
               ),

@@ -7,7 +7,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:graduation_project/services/MedicineDatabaseHelper.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import 'package:graduation_project/pages/splash_screen.dart';
 import 'package:graduation_project/home.dart';
 import 'package:graduation_project/services/notification_service.dart';
