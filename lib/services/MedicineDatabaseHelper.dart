@@ -44,7 +44,7 @@ class MedicineDatabaseHelper {
       version: _databaseVersion,
       onCreate: _onCreate,
       onOpen: (db) {
-        print('✅ Database opened successfully');
+        print('Database opened successfully');
       },
     );
   }
@@ -53,30 +53,30 @@ class MedicineDatabaseHelper {
 
   // SQL code to create the database table
   static Future _onCreate(Database db, int version) async {
-    print("💊 MedicineDatabaseHelper: 🔥 _onCreate method is being called!");
+    print(" MedicineDatabaseHelper:  _onCreate method is being called!");
     await db.execute('''
     CREATE TABLE $table (
       $columnId INTEGER PRIMARY KEY AUTOINCREMENT,
       $columnName TEXT NOT NULL UNIQUE
     )
   ''');
-    print("💊 MedicineDatabaseHelper: ✅ Table created successfully.");
-    print("💊 MedicineDatabaseHelper: ⏳ Calling _populateDatabaseWithInitialData from _onCreate.");
+    print("MedicineDatabaseHelper:  Table created successfully.");
+    print(" MedicineDatabaseHelper:  Calling _populateDatabaseWithInitialData from _onCreate.");
     await MedicineDatabaseHelper.instance._populateDatabaseWithInitialData(db);
-    print("💊 MedicineDatabaseHelper: 🔚 Finished _populateDatabaseWithInitialData from _onCreate.");
+    print(" MedicineDatabaseHelper:  Finished _populateDatabaseWithInitialData from _onCreate.");
     // Move debugDatabase to be awaited here as well
     await MedicineDatabaseHelper.instance.debugDatabase();
   }
 
   // Method to populate the database from an asset file
   Future<void> _populateDatabaseWithInitialData(Database db) async {
-    print("💊 MedicineDatabaseHelper: ⏳ _populateDatabaseWithInitialData called.");
+    print(" MedicineDatabaseHelper:  _populateDatabaseWithInitialData called.");
     try {
-      print("💊 MedicineDatabaseHelper: 📂 Attempting to load assets/medicines.json");
+      print(" MedicineDatabaseHelper:  Attempting to load assets/medicines.json");
       String jsonString = await rootBundle.loadString('assets/medicines.json');
-      print("💊 MedicineDatabaseHelper: ✅ Successfully loaded assets/medicines.json. Length: ${jsonString.length}");
+      print(" MedicineDatabaseHelper: Successfully loaded assets/medicines.json. Length: ${jsonString.length}");
       List<dynamic> jsonData = json.decode(jsonString);
-      print("💊 MedicineDatabaseHelper: ✅ Loaded JSON data: ${jsonData.length} medicines.");
+      print(" MedicineDatabaseHelper:  Loaded JSON data: ${jsonData.length} medicines.");
 
       if (jsonData.isNotEmpty) {
         Batch batch = db.batch();
@@ -86,69 +86,39 @@ class MedicineDatabaseHelper {
             batch.insert(MedicineDatabaseHelper.table, {'name': itemName});
             insertedCount++;
           } else {
-            print("💊 MedicineDatabaseHelper: ⚠️ Skipping invalid JSON item: $itemName");
+            print("MedicineDatabaseHelper:  Skipping invalid JSON item: $itemName");
           }
         }
         await batch.commit();
-        print("💊 MedicineDatabaseHelper: ✅ Database populated with $insertedCount medicines from JSON.");
+        print(" MedicineDatabaseHelper: Database populated with $insertedCount medicines from JSON.");
       } else {
-        print("💊 MedicineDatabaseHelper: ⚠️ JSON data is empty. No medicines to populate.");
+        print(" MedicineDatabaseHelper:  JSON data is empty. No medicines to populate.");
       }
     } catch (e) {
-      print("💊 MedicineDatabaseHelper: ❌ Error populating database: $e");
-      print("💊 MedicineDatabaseHelper: ❌ Error details: $e");
+      print(" MedicineDatabaseHelper:  Error populating database: $e");
+      print(" MedicineDatabaseHelper:  Error details: $e");
     }
-    print("💊 MedicineDatabaseHelper: 🔚 _populateDatabaseWithInitialData finished.");
+    print(" MedicineDatabaseHelper:  _populateDatabaseWithInitialData finished.");
   }
-
-  // Future<void> _populateDatabaseWithInitialData(Database db) async {
-  //   try {
-  //     // Check if the table already has data
-  //     List<Map<String, dynamic>> existingData = await db.query(table);
-  //     if (existingData.isNotEmpty) {
-  //       print('ℹ️ Database already populated. Skipping.');
-  //       return;
-  //     }
-  //
-  //     String jsonString = await rootBundle.loadString('assets/medicines.json');
-  //     List<dynamic> data = json.decode(jsonString);
-  //     Batch batch = db.batch();
-  //     for (var item in data) {
-  //       String? medicineName;
-  //       if (item is String) {
-  //         medicineName = item;
-  //       } else if (item is Map && item.containsKey('name')) {
-  //         medicineName = item['name'];
-  //       }
-  //       if (medicineName != null && medicineName.isNotEmpty) {
-  //         batch.insert(table, {columnName: medicineName});
-  //       }
-  //     }
-  //     await batch.commit();
-  //     print('✅ Database populated with initial data.');
-  //   } catch (e) {
-  //     print('❌ Error populating database: $e');
-  //   }
-  // }
 
 
 
   Future<void> debugDatabase() async {
-    print("💊 MedicineDatabaseHelper: 🐞 debugDatabase called.");
+    print(" MedicineDatabaseHelper:  debugDatabase called.");
     try {
       Database db = _database!;
       List<Map<String, dynamic>> data = await db.query(table, limit: 5); // Limit to a few rows
-      print("💊 MedicineDatabaseHelper: 📌 First few medicines: $data");
-      print("💊 MedicineDatabaseHelper: 🐞 debugDatabase finished.");
+      print(" MedicineDatabaseHelper:  First few medicines: $data");
+      print(" MedicineDatabaseHelper:  debugDatabase finished.");
     } catch (e) {
-      print("💊 MedicineDatabaseHelper: ❌ Error in debugDatabase: $e");
+      print(" MedicineDatabaseHelper:  Error in debugDatabase: $e");
     }
   }
 
 
   // Method to query medicines for autocomplete
   Future<List<String>> getSuggestions(String query) async {
-    print("💊 MedicineDatabaseHelper: ❓ getSuggestions called with query: $query");
+    print(" MedicineDatabaseHelper:  getSuggestions called with query: $query");
     Database db = await instance.database;
     if (query.isEmpty) return [];
 

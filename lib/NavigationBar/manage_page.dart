@@ -78,7 +78,7 @@ class ManagePage extends StatelessWidget {
           }
 
           List<String> linkedUserIds = linkedUsersSnapshot.data!;
-          print("DEBUG: Linked user IDs -> $linkedUserIds");
+         // print("DEBUG: Linked user IDs -> $linkedUserIds");
              return StreamBuilder<QuerySnapshot>(
             stream: _firestoreService.getAppointmentsStream(linkedUserIds),
             builder: (context, snapshot) {

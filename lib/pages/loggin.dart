@@ -21,8 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     try {
       await Auth().signInWithEmailAndPassword(
-        email: emailController.text,
-        password: passwordController.text,
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
         phone: phoneController.text,
       );
       Navigator.pushReplacement(
