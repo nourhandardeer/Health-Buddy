@@ -129,6 +129,7 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
               selectedUnit: selectedUnit!,
               documentId: docId,
               startDate: '',
+              dosage: dosage.toString(),
             ),
           ),
         );

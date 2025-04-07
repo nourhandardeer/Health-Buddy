@@ -35,6 +35,10 @@ dependencies:
   flutter_timezone: ^4.1.0
   sqflite:
   path_provider:
+  flutter_background_service: ^5.1.0
+  flutter_tts: ^4.2.2
+  flutter_foreground_task: ^8.17.0
+
 
 
 dev_dependencies:

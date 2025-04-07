@@ -6,6 +6,7 @@ import 'package:graduation_project/services/notification_service.dart'; // Impor
 import 'package:intl/intl.dart';
 
 class RefillsPage extends StatefulWidget {
+  
   const RefillsPage({Key? key}) : super(key: key);
 
   @override
@@ -13,6 +14,8 @@ class RefillsPage extends StatefulWidget {
 }
 
 class _RefillsPageState extends State<RefillsPage> {
+  final Set<String> _notifiedMeds = {};
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -79,27 +82,33 @@ class _RefillsPageState extends State<RefillsPage> {
             if (reminderTime2 != "Not set") {
               scheduledTime2 = _convertTimeToDateTime(reminderTime2);
             }
+            int remindMeWhen = data['remindMeWhen'] ?? 5;
+
 
             // Schedule notifications if inventory is low
-            if (inventory < 5) {
-              if (scheduledTime1 != null) {
-                NotificationService.scheduleNotification(
-                  id: index,
-                  title: "Refill Reminder: ${data["name"]}",
-                  body: "Your medication inventory is low! Please refill soon.",
-                  scheduledTime: scheduledTime1,
-                );
-              }
+           // Schedule notifications if inventory is low and not already scheduled
+if (inventory < remindMeWhen && !_notifiedMeds.contains(data["name"])) {
+  _notifiedMeds.add(data["name"]); // mark as scheduled
 
-              if (scheduledTime2 != null) {
-                NotificationService.scheduleNotification(
-                  id: index + 1, // Unique ID for this notification
-                  title: "Refill Reminder: ${data["name"]}",
-                  body: "Your medication inventory is low! Please refill soon.",
-                  scheduledTime: scheduledTime2,
-                );
-              }
-            }
+  if (scheduledTime1 != null) {
+    NotificationService.scheduleNotification(
+      id: index,
+      title: "Refill Reminder: ${data["name"]}",
+      body: "Your medication inventory is low! Please refill soon.",
+      scheduledTime: scheduledTime1,
+    );
+  }
+
+  if (scheduledTime2 != null) {
+    NotificationService.scheduleNotification(
+      id: index + 1,
+      title: "Refill Reminder: ${data["name"]}",
+      body: "Your medication inventory is low! Please refill soon.",
+      scheduledTime: scheduledTime2,
+    );
+  }
+}
+
 
             return Card(
               color: Colors.grey[200],
