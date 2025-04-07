@@ -96,7 +96,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
                     style: const TextStyle(color: Colors.black, fontSize: 18),
                   ),
                   subtitle: Text(
-                    "Daily — ${medData['reminderTime'] ?? 'N/A'}",
+                    " ${medData['frequency'] ?? 'Specific Days ' }",
                     style: TextStyle(color: Colors.grey[700]),
                   ),
                   onTap: () {

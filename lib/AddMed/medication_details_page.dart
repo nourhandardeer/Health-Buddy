@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'FrequencySelectionPage.dart'; // Import Frequency Selection Page
+import 'FrequencySelectionPage.dart';
+import 'UnitSelectionPage.dart';
 
 class MedicationDetailsPage extends StatefulWidget {
   final String medId;
@@ -115,14 +116,51 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
             _buildSection(
               icon: Icons.alarm,
               title: "Reminder Time",
-              value: "${medData!['reminderTime'] ?? 'N/A'}",
+              value: "${medData!['reminderTime1'] ?? 'N/A'}",
               field: "reminderTime",
             ),
-            _buildSection(
-              icon: Icons.straighten,
-              title: "Unit",
-              value: "${medData!['unit'] ?? 'N/A'}",
-              field: "unit",
+            Card(
+              elevation: 3,
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.blueAccent,
+                  child: Icon(Icons.straighten, color: Colors.white),
+                ),
+                title: const Text(
+                  "Unit",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                subtitle: Text(
+                  "${medData!['unit'] ?? 'N/A'}",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UnitSelectionPage(
+                          initialUnit: medData!['unit'] ?? '',
+                          onUnitSelected: (selectedUnit) async {
+                            await _updateData('unit', selectedUnit);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
             _buildDropdownSection(
               icon: Icons.fastfood,
@@ -245,9 +283,42 @@ Future<void> _deleteMedication() async {
                 context,
                 MaterialPageRoute(
                   builder: (context) => FrequencySelectionPage(
-                    initialFrequency: value,
-                    onSave: (newFrequency) {
-                      _updateData(field, newFrequency);
+                    initialFrequency: medData?['frequency'] ?? '',
+                    initialSpecificDays: medData?['specificDays'] != null
+                        ? List<String>.from(medData!['specificDays'])
+                        : [],
+                    onSave: (Map<String, dynamic> result) async {
+                      if (result["frequency"] != null) {
+                        await FirebaseFirestore.instance
+                            .collection('meds')
+                            .doc(widget.medId)
+                            .update({
+                          "frequency": result["frequency"],
+                          "specificDays": FieldValue.delete(),
+                        });
+                        setState(() {
+                          medData?["frequency"] = result["frequency"];
+                          medData?.remove("specificDays");
+                        });
+                      } else if (result["specificDays"] != null) {
+                        await FirebaseFirestore.instance
+                            .collection('meds')
+                            .doc(widget.medId)
+                            .update({
+                          "specificDays": result["specificDays"],
+                          "frequency": FieldValue.delete(),
+                        });
+                        setState(() {
+                          medData?["specificDays"] = result["specificDays"];
+                          medData?.remove("frequency");
+                        });
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Frequency updated successfully!"),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -258,6 +329,7 @@ Future<void> _deleteMedication() async {
       ),
     );
   }
+
 
   Widget _buildDropdownSection({
   required IconData icon,

@@ -84,7 +84,19 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedDay = selectedDay;
           _focusedDay = focusedDay;
         });
-        loadTakenMedsForDate(selectedDay);
+
+        final today = DateTime.now();
+        final isToday = isSameDay(selectedDay, today);
+
+        print("📅 Selected day: $selectedDay — isToday: $isToday");
+
+        if (isToday) {
+          print("🔁 Calling loadTakenMedsForToday()");
+          loadTakenMedsForToday();
+        } else {
+          print("🔁 Calling loadTakenMedsForDate()");
+          loadTakenMedsForDate(selectedDay);
+        }
       },
       calendarFormat: CalendarFormat.week,
       startingDayOfWeek: StartingDayOfWeek.saturday,
@@ -122,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final appointments = snapshot.data!;
         final selectedDate = _selectedDay ?? _focusedDay;
         final selectedDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-        final oneDayBefore = selectedDay.subtract(const Duration(days: 1));
+     //   final oneDayBefore = selectedDay.subtract(const Duration(days: 1));
         final oneDayAfter = selectedDay.add(const Duration(days: 1));
 
         List<QueryDocumentSnapshot> filteredAppointments = [];
@@ -137,14 +149,14 @@ class _HomeScreenState extends State<HomeScreen> {
             final appointmentDate = DateTime.parse(appointmentDateStr);
             final appointmentDay = DateTime(appointmentDate.year, appointmentDate.month, appointmentDate.day);
 
-            if (appointmentDay == selectedDay || appointmentDay == oneDayBefore) {
+            if (appointmentDay == selectedDay ) {
               filteredAppointments.add(appointment);
             }
 
             if (appointmentDay == oneDayAfter) {
               final doctorName = data['doctorName'] ?? 'Unknown';
               final appointmentTime = data['appointmentTime'] ?? 'Unknown';
-              reminders.add("you have an appointment tomorrow with Dr. $doctorName at $appointmentTime");            }
+              reminders.add("you have an appointment zeft tomorrow with Dr. $doctorName at $appointmentTime");            }
           } catch (e) {
             print(" Error parsing date: $appointmentDateStr — $e");
             continue;
@@ -491,6 +503,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                       "${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
                                       style: const TextStyle(
                                           fontSize: 14, color: Colors.black)),
+                                  if (medData['intakeAdvice'] != null && medData['intakeAdvice'].toString().isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        "Advice: ${medData['intakeAdvice']}",
+                                        style: const TextStyle(fontSize: 14, color: Colors.teal),
+                                      ),
+                                    ),
                                   const SizedBox(height: 4),
                                   Text("Frequency: ${medData['frequency'] ?? 'Specific Days'}",
                                       style: const TextStyle(
@@ -580,8 +600,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (snapshot.docs.isNotEmpty) {
           setState(() {
             for (var doc in snapshot.docs) {
-              final medId = doc['medId'];
-              _medTakenStatus[medId] = true;
+              final doseKey = doc['medId'];
+              _medTakenStatus[doseKey] = true;
             }
           });
         }
@@ -592,64 +612,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  Future<void> markMedicationAsTaken(String medId, String dosageStr) async {
+  Future<void> markMedicationAsTaken(String doseKey, String dosageStr) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    if (medId.isEmpty || medId == null) {
-      print("Invalid medication ID");
-      return;
-    }
     final now = DateTime.now();
+    final todayDate = "${now.year}-${now.month}-${now.day}";
 
     try {
-      // 🔹 Get all linked user IDs (patient + emergency contacts)
-      // 🔹 Use saveData to handle linked users and data saving
       String? docId = await _firestoreService.saveData(
-        collection: 'users/${user.uid}/medsTaken', // Save under current user's medsTaken subcollection
+        collection: 'users/${user.uid}/medsTaken',
         data: {
-          'medId': medId,
+          'medId': doseKey,
           'takenAt': now,
-          'date': "${now.year}-${now.month}-${now.day}",
+          'date': todayDate,
         },
         context: context,
       );
 
-      if (docId == null) {
-        // Error occurred during saveData (SnackBar already shown by saveData)
-        return;
+      if (docId == null) return;
+
+      if (mounted) {
+        setState(() {
+          _medTakenStatus[doseKey] = true;
+        });
       }
 
-
-      List<String> linkedUsers = await _firestoreService.getLinkedUserIds();
-      print("mark taken meds for $linkedUsers");
-      for (String userId in linkedUsers) {
-        if (mounted) {
-          setState(() {
-            _medTakenStatus[medId] = true;
-          });
-        }
-      }
-
-
-      final medDocRef = FirebaseFirestore.instance.collection('meds').doc(medId);
+      final baseMedId = doseKey.contains('_') ? doseKey.split('_')[0] : doseKey;
+      final medDocRef = FirebaseFirestore.instance.collection('meds').doc(baseMedId);
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final medSnapshot = await transaction.get(medDocRef);
-        if (!medSnapshot.exists) {
-          print("Medication document does not exist.");
-          return;
-        }
+        if (!medSnapshot.exists) return;
 
         final medData = medSnapshot.data() as Map<String, dynamic>;
-        if (medData == null) {
-          print("Medication data is null. Check Firestore structure.");
-          return;
-        }
-
-        final currentInventory = (medData?['currentInventory'] ?? 0).toDouble();
+        final currentInventory = (medData['currentInventory'] ?? 0).toDouble();
         final dosage = double.tryParse(dosageStr) ?? 0;
-
         final newInventory = (currentInventory - dosage).clamp(0, double.infinity);
 
         transaction.update(medDocRef, {'currentInventory': newInventory});
@@ -658,27 +656,37 @@ class _HomeScreenState extends State<HomeScreen> {
       print('Error updating medication: $e');
     }
   }
+
+
+
   Future<void> loadTakenMedsForDate(DateTime date) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final dateStr = "${date.year}-${date.month}-${date.day}";
+    print("🔄 Loading taken meds for $dateStr");
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('medsTaken')
-        .where('date', isEqualTo: dateStr)
-        .get();
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('medsTaken')
+          .where('date', isEqualTo: dateStr)
+          .get();
 
-    setState(() {
-      _medTakenStatus.clear();
-      for (var doc in snapshot.docs) {
-        final medId = doc['medId'];
-        _medTakenStatus[medId] = true;
-      }
-    });
+      setState(() {
+        _medTakenStatus.clear();
+        for (var doc in snapshot.docs) {
+          final doseKey = doc['medId'];
+          _medTakenStatus[doseKey] = true;
+
+        }
+      });
+    } catch (e) {
+      print("⚠️ Error loading taken medications for $dateStr: $e");
+    }
   }
+
 
   Widget _homeScreenContent() {
     return SingleChildScrollView(
