@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:graduation_project/services/MedicineDatabaseHelper.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -13,8 +12,6 @@ import 'package:graduation_project/services/notification_service.dart';
 import 'package:graduation_project/services/theme_provider.dart';
 import 'package:graduation_project/pages/setting/PinVerificationPage.dart'; // Import the PIN verification page
 
-FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +31,6 @@ void main() async {
   );
 
   await NotificationService.initialize();
-  await initializeNotifications();
   final databaseHelper = MedicineDatabaseHelper.instance;
   await databaseHelper.database; // Wait for the database to be initialized
   await databaseHelper.debugDatabase();
@@ -49,35 +45,7 @@ void main() async {
   );
 }
 
-Future<void> initializeNotifications() async {
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  const InitializationSettings initializationSettings =
-      InitializationSettings(android: initializationSettingsAndroid);
-
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  showTestNotification();
-}
-
-Future<void> showTestNotification() async {
-  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'channel_id',
-    'Test Channel',
-    importance: Importance.high,
-    priority: Priority.high,
-  );
-
-  const NotificationDetails platformDetails =
-      NotificationDetails(android: androidDetails);
-
-  await flutterLocalNotificationsPlugin.show(
-    0,
-    'Hello!',
-    'This is a test notification',
-    platformDetails,
-  );
-}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

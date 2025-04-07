@@ -8,6 +8,8 @@ class TimesPage extends StatefulWidget {
   final String selectedUnit;
   final String documentId;
   final String startDate;
+  final String dosage;
+
 
   const TimesPage({
     Key? key,
@@ -15,6 +17,7 @@ class TimesPage extends StatefulWidget {
     required this.selectedUnit,
     required this.documentId,
     required this.startDate,
+    required this.dosage,
   }) : super(key: key);
 
   @override
@@ -88,6 +91,7 @@ class _TimesPageState extends State<TimesPage> {
                 selectedUnit: widget.selectedUnit,
                 selectedFrequency: selectedFrequency!,
                 documentId: widget.documentId,
+                dosage: widget.dosage,
               ),
             ),
           );
@@ -103,6 +107,8 @@ class _TimesPageState extends State<TimesPage> {
                 selectedUnit: widget.selectedUnit,
                 selectedFrequency: selectedFrequency!,
                 documentId: widget.documentId,
+                dosage: widget.dosage,
+                
               ),
             ),
           );

@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:graduation_project/services/notification_service.dart';
 import 'refillrequest.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 class DatePage extends StatefulWidget {
   final String medicationName;
   final String selectedUnit;
   final String selectedFrequency;
   final String documentId;
+  final String dosage;
 
   const DatePage({
     Key? key,
@@ -16,6 +18,7 @@ class DatePage extends StatefulWidget {
     required this.selectedUnit,
     required this.selectedFrequency,
     required this.documentId,
+    required this.dosage,
   }) : super(key: key);
 
   @override
@@ -121,12 +124,23 @@ class _DatePageState extends State<DatePage> {
                 days: 1)); // Schedule for next day if time already passed
           }
 
+          FlutterTts flutterTts = FlutterTts();
+          // Call this function when notification fires
+          Future<void> speakReminder(String message) async {
+            await flutterTts.setLanguage("en-US"); // Set language
+            await flutterTts.setSpeechRate(0.5); // Slower speed for elderly
+            await flutterTts.speak(message); // Speak the reminder
+          }
+
           // Schedule the notification
           await NotificationService.scheduleNotification(
             id: i + 1,
             title: "Medication Reminder",
-            body: "Time to take ${widget.medicationName}",
+            body:
+                "Time to take take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
             scheduledTime: scheduledTime,
+            ttsMessage:
+                "It is time to take your medicine. Please take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
           );
         }
       } else if (isOnceAWeek) {
