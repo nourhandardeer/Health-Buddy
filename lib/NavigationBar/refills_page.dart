@@ -6,7 +6,6 @@ import 'package:graduation_project/services/notification_service.dart'; // Impor
 import 'package:intl/intl.dart';
 
 class RefillsPage extends StatefulWidget {
-
   const RefillsPage({Key? key}) : super(key: key);
 
   @override
@@ -69,47 +68,57 @@ class _RefillsPageState extends State<RefillsPage> {
                 : (data['currentInventory'] as double?)?.toInt() ?? 0;
 
             String reminderTime1 = data["reminderTime1"] ?? "Not set";
-            String reminderTime2 = data["reminderTime2"] ?? "Not set";
+           // String reminderTime2 = data["reminderTime2"] ?? "Not set";
 
             // Convert reminder times to DateTime objects
             DateTime? scheduledTime1;
-            DateTime? scheduledTime2;
+            //DateTime? scheduledTime2;
 
             if (reminderTime1 != "Not set") {
               scheduledTime1 = _convertTimeToDateTime(reminderTime1);
             }
 
-            if (reminderTime2 != "Not set") {
+            /*if (reminderTime2 != "Not set") {
               scheduledTime2 = _convertTimeToDateTime(reminderTime2);
-            }
+            }*/
             int remindMeWhen = data['remindMeWhen'] ?? 5;
 
-            
             // Schedule notifications if inventory is low
             // Schedule notifications if inventory is low and not already scheduled
-            if (inventory <= remindMeWhen && !_notifiedMeds.contains(data["name"])) {
+            print("Checking med: ${data['name']}");
+            print("Inventory: $inventory | Threshold: $remindMeWhen");
+            print("ReminderTime1: $reminderTime1 → $scheduledTime1");
+            
+
+            if (inventory > 0 &&inventory <= remindMeWhen &&
+                !_notifiedMeds.contains(data["name"])) {
+                  print(">> Scheduling notification for ${data['name']}");
               _notifiedMeds.add(data["name"]); // mark as scheduled
 
-              if (scheduledTime1 != null) {
-                DateTime reminderTimeWithDelay = scheduledTime1.add(const Duration(seconds: 5));
+              //if (scheduledTime1 != null) {
+               // DateTime reminderTimeWithDelay =
+                   // scheduledTime1.add(const Duration(seconds: 5));
+                   DateTime now = DateTime.now();
+                   DateTime scheduledTime = now.add(Duration(seconds: 5));
                 NotificationService.scheduleNotification(
                   id: data['name'].hashCode ^ scheduledTime1.hashCode,
                   title: "Refill Reminder: ${data["name"]}",
                   body: "Your medication inventory is low! Please refill soon.",
-                  scheduledTime: reminderTimeWithDelay,
+                  ttsMessage: "Your medication ${data["name"]} inventory is low! Please refill soon.",
+                  scheduledTime: scheduledTime,
+                  speakImmediately: true
                 );
-              }
+              //}
 
-              if (scheduledTime2 != null) {
+              /*if (scheduledTime2 != null) {
                 NotificationService.scheduleNotification(
                   id: data['name'].hashCode ^ scheduledTime2.hashCode,
                   title: "Refill Reminder: ${data["name"]}",
                   body: "Your medication inventory is low! Please refill soon.",
                   scheduledTime: scheduledTime2,
                 );
-              }
+              }*/
             }
-
 
             return Card(
               color: Colors.grey[200],
@@ -167,9 +176,6 @@ class _RefillsPageState extends State<RefillsPage> {
     DateTime scheduledTime =
         DateTime(now.year, now.month, now.day, time.hour, time.minute);
 
-    if (scheduledTime.isBefore(now)) {
-      scheduledTime = scheduledTime.add(const Duration(days: 1));
-    }
 
     return scheduledTime;
   }

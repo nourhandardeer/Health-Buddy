@@ -96,8 +96,10 @@ class Auth {
           await NotificationService.scheduleNotification(
             id: doc.hashCode,
             title: "Medication Reminder",
-            body: "Time to take ${medData['name']}",
+            body: "Time to take ${medData['dosage']} ${medData['unit']} of ${medData['name']}",
             scheduledTime: scheduledTime,
+            ttsMessage:
+                "It is time to take your medicine. Please take ${medData['dosage']} ${medData['unit']} of ${medData['name']}.",
           );
           
           print("Notification scheduled.");
