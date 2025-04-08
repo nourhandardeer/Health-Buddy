@@ -6,7 +6,7 @@ import 'package:graduation_project/services/notification_service.dart'; // Impor
 import 'package:intl/intl.dart';
 
 class RefillsPage extends StatefulWidget {
-  
+
   const RefillsPage({Key? key}) : super(key: key);
 
   @override
@@ -84,30 +84,31 @@ class _RefillsPageState extends State<RefillsPage> {
             }
             int remindMeWhen = data['remindMeWhen'] ?? 5;
 
-
+            
             // Schedule notifications if inventory is low
-           // Schedule notifications if inventory is low and not already scheduled
-if (inventory < remindMeWhen && !_notifiedMeds.contains(data["name"])) {
-  _notifiedMeds.add(data["name"]); // mark as scheduled
+            // Schedule notifications if inventory is low and not already scheduled
+            if (inventory <= remindMeWhen && !_notifiedMeds.contains(data["name"])) {
+              _notifiedMeds.add(data["name"]); // mark as scheduled
 
-  if (scheduledTime1 != null) {
-    NotificationService.scheduleNotification(
-      id: index,
-      title: "Refill Reminder: ${data["name"]}",
-      body: "Your medication inventory is low! Please refill soon.",
-      scheduledTime: scheduledTime1,
-    );
-  }
+              if (scheduledTime1 != null) {
+                DateTime reminderTimeWithDelay = scheduledTime1.add(const Duration(seconds: 5));
+                NotificationService.scheduleNotification(
+                  id: data['name'].hashCode ^ scheduledTime1.hashCode,
+                  title: "Refill Reminder: ${data["name"]}",
+                  body: "Your medication inventory is low! Please refill soon.",
+                  scheduledTime: reminderTimeWithDelay,
+                );
+              }
 
-  if (scheduledTime2 != null) {
-    NotificationService.scheduleNotification(
-      id: index + 1,
-      title: "Refill Reminder: ${data["name"]}",
-      body: "Your medication inventory is low! Please refill soon.",
-      scheduledTime: scheduledTime2,
-    );
-  }
-}
+              if (scheduledTime2 != null) {
+                NotificationService.scheduleNotification(
+                  id: data['name'].hashCode ^ scheduledTime2.hashCode,
+                  title: "Refill Reminder: ${data["name"]}",
+                  body: "Your medication inventory is low! Please refill soon.",
+                  scheduledTime: scheduledTime2,
+                );
+              }
+            }
 
 
             return Card(
@@ -163,6 +164,13 @@ if (inventory < remindMeWhen && !_notifiedMeds.contains(data["name"])) {
     DateFormat format = DateFormat("hh:mm a");
     DateTime time = format.parse(timeStr);
     DateTime now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    DateTime scheduledTime =
+        DateTime(now.year, now.month, now.day, time.hour, time.minute);
+
+    if (scheduledTime.isBefore(now)) {
+      scheduledTime = scheduledTime.add(const Duration(days: 1));
+    }
+
+    return scheduledTime;
   }
 }
