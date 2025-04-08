@@ -33,10 +33,10 @@ class _TimesPageState extends State<TimesPage> {
     "Once a day",
     "Twice a day",
     "3 times a day",
-    // "Every other day",
     "Once a week",
-    "Only as needed",
     "Specific days of the week",
+    "Only as needed",
+
   ];
 
 
@@ -79,10 +79,7 @@ class _TimesPageState extends State<TimesPage> {
         }
 
         // Specific days or recurring ➡ DatePage
-        else if (selectedFrequency == "Specific days of the week" ||
-            selectedFrequency == "Every X days" ||
-            selectedFrequency == "Every X weeks" ||
-            selectedFrequency == "Every X months") {
+        else if (selectedFrequency == "Specific days of the week") {
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -150,7 +147,6 @@ class _TimesPageState extends State<TimesPage> {
             Expanded(
               child: ListView(
                 children: [
-                  // خيارات التكرار الأساسية
                   ...frequencyOptions.map((frequency) {
                     return RadioListTile<String>(
                       title: Text(frequency),
@@ -169,7 +165,6 @@ class _TimesPageState extends State<TimesPage> {
                     );
                   }).toList(),
 
-                  // لو "Other" ظاهر
                   if (showOtherOptions) ...[
                     const Divider(),
                     const Text(

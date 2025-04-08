@@ -75,28 +75,171 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
     }
   }
 
+  void _showTimePicker(String field) {
+    TimeOfDay selectedTime = TimeOfDay(hour: 0, minute: 0);
+    showTimePicker(
+      context: context,
+      initialTime: selectedTime,
+    ).then((pickedTime) {
+      if (pickedTime != null) {
+        final hour = pickedTime.hourOfPeriod == 0 ? 12 : pickedTime.hourOfPeriod;
+        final minute = pickedTime.minute.toString().padLeft(2, '0');
+        final period = pickedTime.period == DayPeriod.am ? 'AM' : 'PM';
+        final formattedTime = "$hour:$minute $period";
+        _updateData(field, formattedTime);
+      }
+    });
+  }
+
+  void _showCustomInputDialog(TextEditingController controller) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Enter Custom Intake Advice"),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: "Write your intake advice..."),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                String value = controller.text.trim();
+                if (value.isNotEmpty) {
+                  _updateData("intakeAdvice", "Custom");
+                  _updateData("customIntakeAdvice", value);
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Delete Medication"),
+          content: const Text("Are you sure you want to delete this medication?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection('meds')
+                    .doc(widget.medId)
+                    .delete();
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSection({
+    required IconData icon,
+    required String title,
+    required String value,
+    required String field,
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.blueAccent,
+          child: Icon(icon, color: Colors.white),
+        ),
+        title: Text(title),
+        subtitle: Text(value),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit),
+          onPressed: onTap ?? () {},
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInventoryControl({
+    required IconData icon,
+    required String title,
+    required String field,
+    required int value,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.blueAccent,
+          child: Icon(icon, color: Colors.white),
+        ),
+        title: Text(title),
+        subtitle: Text('$value'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove),
+              onPressed: () {
+                if (value > 0) _updateData(field, (value - 1).toString());
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () {
+                _updateData(field, (value + 1).toString());
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      title: const Text("Medication Details"),
+      backgroundColor: Colors.white,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
-
-        appBar: _buildAppBar(context),
-        body: const Center(child: CircularProgressIndicator()),
-      );
+      return Scaffold(appBar: _buildAppBar(context), body: const Center(child: CircularProgressIndicator()));
     }
 
     if (medData == null) {
       return Scaffold(
         appBar: _buildAppBar(context),
-        body: const Center(
-          child: Text(
-            "Medication not found.",
-            style: TextStyle(fontSize: 18, color: Colors.grey),
-          ),
-        ),
+        body: const Center(child: Text("Medication not found.", style: TextStyle(fontSize: 18, color: Colors.grey))),
       );
     }
+
+    String frequency = medData!['frequency'] ?? '';
+    bool isTwiceADay = frequency == "Twice a day";
+    int currentInventory = int.tryParse(medData!['currentInventory']?.toString() ?? '0') ?? 0;
+    String intakeAdvice = medData!['intakeAdvice'] ?? 'None';
+    TextEditingController intakeController = TextEditingController(
+      text: medData!['customIntakeAdvice'] ?? '',
+    );
 
     return Scaffold(
       appBar: _buildAppBar(context),
@@ -106,67 +249,57 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSection(
-              icon: Icons.calendar_today,
-              title: "Frequency",
-              value: "${medData!['frequency'] ?? 'N/A'}",
-              field: "frequency",
-              isFrequency: true,
-            ),
+            _buildSection(icon: Icons.calendar_today, title: "Frequency", value: frequency, field: "frequency"),
             _buildSection(
               icon: Icons.alarm,
-              title: "Reminder Time",
-              value: "${medData!['reminderTime1'] ?? 'N/A'}",
-              field: "reminderTime",
+              title: "Reminder Time 1",
+              value: medData!['reminderTime1'] ?? 'N/A',
+              field: "reminderTime1",
+              onTap: () => _showTimePicker("reminderTime1"),
             ),
-            Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              child: ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.blueAccent,
-                  child: Icon(Icons.straighten, color: Colors.white),
-                ),
-                title: const Text(
-                  "Unit",
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                subtitle: Text(
-                  "${medData!['unit'] ?? 'N/A'}",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UnitSelectionPage(
-                          initialUnit: medData!['unit'] ?? '',
-                          onUnitSelected: (selectedUnit) async {
-                            await _updateData('unit', selectedUnit);
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
+            if (isTwiceADay)
+              _buildSection(
+                icon: Icons.alarm,
+                title: "Reminder Time 2",
+                value: medData!['reminderTime2'] ?? 'N/A',
+                field: "reminderTime2",
+                onTap: () => _showTimePicker("reminderTime2"),
               ),
+            _buildInventoryControl(
+              icon: Icons.inventory,
+              title: "Current Inventory",
+              field: "currentInventory",
+              value: currentInventory,
             ),
-            _buildDropdownSection(
+            _buildSection(
+              icon: Icons.straighten,
+              title: "Unit",
+              value: medData!['unit'] ?? 'N/A',
+              field: "unit",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => UnitSelectionPage(
+                      initialUnit: medData!['unit'] ?? '',
+                      onUnitSelected: (selectedUnit) async {
+                        await _updateData('unit', selectedUnit);
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+            _buildSection(
               icon: Icons.fastfood,
               title: "Intake Advice",
+              value: intakeAdvice == "Custom" ? intakeController.text : intakeAdvice,
               field: "intakeAdvice",
-              value: medData!['intakeAdvice'] ?? 'None',
+              onTap: () {
+                if (intakeAdvice == "Custom") {
+                  _showCustomInputDialog(intakeController);
+                }
+              },
             ),
           ],
         ),
@@ -175,263 +308,11 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton.icon(
           onPressed: _confirmDelete,
-          icon: const Icon(Icons.delete, color: Colors.white),
-          label: const Text(
-            "Delete Medication",
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+          icon: const Icon(Icons.delete),
+          label: const Text("Delete Medication"),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
         ),
       ),
-    );
-  }
-  void _confirmDelete() {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text("Delete Medication"),
-        content: const Text("Are you sure you want to delete this medication?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.of(context).pop();
-              _deleteMedication(); // Call the delete function
-            },
-            child: const Text("Delete"),
-          ),
-        ],
-      );
-    },
-  );
-}
-Future<void> _deleteMedication() async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('meds')
-        .doc(widget.medId)
-        .delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Medication deleted successfully!"),
-        backgroundColor: Colors.red,
-      ),
-    );
-    Navigator.of(context).pop(); // Navigate back after deletion
-  } catch (e) {
-    print("Error deleting medication: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Failed to delete medication."),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-}
-
-
-  Widget _buildSection({
-    required IconData icon,
-    required String title,
-    required String value,
-    required String field,
-    bool isFrequency = false,
-  }) {
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.blueAccent,
-          child: Icon(icon, color: Colors.white),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: Colors.grey[700],
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        subtitle: Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.edit, color: Colors.blueAccent),
-          onPressed: () {
-            if (isFrequency) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FrequencySelectionPage(
-                    initialFrequency: medData?['frequency'] ?? '',
-                    initialSpecificDays: medData?['specificDays'] != null
-                        ? List<String>.from(medData!['specificDays'])
-                        : [],
-                    onSave: (Map<String, dynamic> result) async {
-                      if (result["frequency"] != null) {
-                        await FirebaseFirestore.instance
-                            .collection('meds')
-                            .doc(widget.medId)
-                            .update({
-                          "frequency": result["frequency"],
-                          "specificDays": FieldValue.delete(),
-                        });
-                        setState(() {
-                          medData?["frequency"] = result["frequency"];
-                          medData?.remove("specificDays");
-                        });
-                      } else if (result["specificDays"] != null) {
-                        await FirebaseFirestore.instance
-                            .collection('meds')
-                            .doc(widget.medId)
-                            .update({
-                          "specificDays": result["specificDays"],
-                          "frequency": FieldValue.delete(),
-                        });
-                        setState(() {
-                          medData?["specificDays"] = result["specificDays"];
-                          medData?.remove("frequency");
-                        });
-                      }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Frequency updated successfully!"),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              );
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-
-  Widget _buildDropdownSection({
-  required IconData icon,
-  required String title,
-  required String field,
-  required String value,
-}) {
-  List<String> intakeOptions = ["None", "Before Meal", "After Meal", "With Meal", "Custom"];
-  
-  TextEditingController customController = TextEditingController(
-    text: (value == "Custom" && medData?['customIntakeAdvice'] != null)
-        ? medData!['customIntakeAdvice']
-        : '',
-  );
-
-  return Card(
-    elevation: 3,
-    margin: const EdgeInsets.symmetric(vertical: 10),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-    child: Column(
-      children: [
-        ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.blueAccent,
-            child: Icon(icon, color: Colors.white),
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: Colors.grey[700],
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          subtitle: DropdownButton<String>(
-            value: intakeOptions.contains(value) ? value : "Custom",
-            isExpanded: true,
-            items: intakeOptions.map((String option) {
-              return DropdownMenuItem<String>(
-                value: option,
-                child: Text(option),
-              );
-            }).toList(),
-            onChanged: (newValue) {
-              if (newValue == "Custom") {
-                _showCustomInputDialog(field, customController);
-              } else if (newValue != null) {
-                _updateData(field, newValue);
-              }
-            },
-          ),
-        ),
-        if (value == "Custom") 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              medData?['customIntakeAdvice'] ?? 'Enter your custom advice',
-              style: const TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-          ),
-      ],
-    ),
-  );
-}
-void _showCustomInputDialog(String field, TextEditingController controller) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text("Enter Custom Intake Advice"),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: "Write your intake advice..."),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              String customAdvice = controller.text.trim();
-              if (customAdvice.isNotEmpty) {
-                _updateData("intakeAdvice", "Custom");
-                _updateData("customIntakeAdvice", customAdvice);
-              }
-              Navigator.of(context).pop();
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      title: const Text("Medication Details"),
-      backgroundColor: Colors.white,
-      elevation: 1,
     );
   }
 }

@@ -151,15 +151,17 @@ class _DatePageState extends State<DatePage> {
           return;
         }
         dataToSave['onceAWeekDay'] = selectedSingleDay;
+        dataToSave['reminderTime1'] = "12:00 AM"; // default value
       } else if (isSpecificDays) {
         if (selectedDays.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select at least one day!')),
-          );
-          return;
+        ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one day!')),
+        );
+        return;
         }
         dataToSave['specificDays'] = selectedDays.toList();
-      } else if (recurringType.isNotEmpty) {
+        dataToSave['reminderTime1'] = "12:00 AM"; // default value
+        } else if (recurringType.isNotEmpty) {
         dataToSave['recurringFrequency'] =
             "Every $recurringValue $recurringType";
         dataToSave['recurringValue'] = recurringValue;
@@ -264,7 +266,6 @@ class _DatePageState extends State<DatePage> {
       itemBuilder: (context, index) {
         final day = daysOfWeek[index];
         final isSelected = selectedSingleDay == day;
-
         return ListTile(
           title: Text(day),
           trailing: isSelected
