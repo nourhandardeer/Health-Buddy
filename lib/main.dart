@@ -11,29 +11,39 @@ import 'package:graduation_project/home.dart';
 import 'package:graduation_project/services/notification_service.dart';
 import 'package:graduation_project/services/theme_provider.dart';
 import 'package:graduation_project/pages/setting/PinVerificationPage.dart'; // Import the PIN verification page
+import 'package:cloudinary_url_gen/cloudinary.dart';
+import 'package:cloudinary_flutter/image/cld_image.dart';
+import 'package:cloudinary_flutter/cloudinary_context.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: kIsWeb
-        ? const FirebaseOptions(
-            apiKey: "AIzaSyBXfH6mUgdeFBSy3qlPHoSAA2eJGv3sELo",
-            authDomain: "graduationproject-c5dba.firebaseapp.com",
-            projectId: "graduationproject-c5dba",
-            storageBucket: "graduationproject-c5dba.firebasestorage.app",
-            messagingSenderId: "132666813360",
-            appId: "1:132666813360:web:00b2bbc028c381d9360475",
-            measurementId: "G-BBCMQ12SM8",
-          )
-        : null,
-  );
+   try {
+    await Firebase.initializeApp(
+      options: kIsWeb
+          ? const FirebaseOptions(
+              apiKey: "AIzaSyBXfH6mUgdeFBSy3qlPHoSAA2eJGv3sELo",
+              authDomain: "graduationproject-c5dba.firebaseapp.com",
+              projectId: "graduationproject-c5dba",
+              storageBucket: "graduationproject-c5dba.firebasestorage.app",
+              messagingSenderId: "132666813360",
+              appId: "1:132666813360:web:00b2bbc028c381d9360475",
+              measurementId: "G-BBCMQ12SM8",
+            )
+          : null,
+    );
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
 
   await NotificationService.initialize();
   final databaseHelper = MedicineDatabaseHelper.instance;
   await databaseHelper.database; // Wait for the database to be initialized
   await databaseHelper.debugDatabase();
+  CloudinaryContext.cloudinary =
+      Cloudinary.fromCloudName(cloudName: 'defwfev8k');
   runApp(
     ChangeNotifierProvider(
       create: (context) => ThemeProvider(),

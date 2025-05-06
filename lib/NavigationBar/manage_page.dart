@@ -2,19 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:graduation_project/pages/add_appointment.dart';
-import 'package:graduation_project/pages/add_pharmacy.dart';
+import 'package:graduation_project/pages/add_doctor.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../services/firestore_service.dart';
 
 class ManagePage extends StatelessWidget {
-   ManagePage({super.key});
+  ManagePage({super.key});
   final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
-    void _showAppointmentDetails(BuildContext context, String doctorName,
-        String doctorPhone, String specialty, String location, String notes,
-        String appointmentDate, String appointmentTime) {
+    void _showAppointmentDetails(
+        BuildContext context,
+        String doctorName,
+        String doctorPhone,
+        String specialty,
+        String location,
+        String notes,
+        String appointmentDate,
+        String appointmentTime) {
       showDialog(
         context: context,
         builder: (context) {
@@ -41,14 +48,13 @@ class ManagePage extends StatelessWidget {
                     style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 10),
                 Text("📝 Notes: $notes", style: const TextStyle(fontSize: 16)),
-
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(
-                    "Close", style: TextStyle(color: Colors.blue)),
+                child:
+                    const Text("Close", style: TextStyle(color: Colors.blue)),
               ),
             ],
           );
@@ -78,8 +84,8 @@ class ManagePage extends StatelessWidget {
           }
 
           List<String> linkedUserIds = linkedUsersSnapshot.data!;
-         // print("DEBUG: Linked user IDs -> $linkedUserIds");
-             return StreamBuilder<QuerySnapshot>(
+          // print("DEBUG: Linked user IDs -> $linkedUserIds");
+          return StreamBuilder<QuerySnapshot>(
             stream: _firestoreService.getAppointmentsStream(linkedUserIds),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -93,55 +99,59 @@ class ManagePage extends StatelessWidget {
                   ),
                 );
               }
-              var hasAppointments = snapshot.hasData &&
-                  snapshot.data!.docs.isNotEmpty;
+              var hasAppointments =
+                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
               return Scaffold(
                 body: hasAppointments
                     ? ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    var appointment = snapshot.data!.docs[index];
-                    String appointmentId = appointment.id;
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: ListTile(
-                        leading: const Icon(Icons.event, color: Colors.blue),
-                        trailing: IconButton(onPressed: () =>
-                            deleteAppointment(appointmentId, context),
-                            icon: const Icon(Icons.delete, color: Colors.red,)),
-                        title: Text(
-                          appointment['doctorName'],
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          "Date: ${appointment['appointmentDate']} | Time: ${appointment['appointmentTime']}",
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        onTap: () {
-                          _showAppointmentDetails(
-                            context,
-                            appointment['doctorName'],
-                            appointment['doctorPhone'],
-                            appointment['specialty'],
-                            appointment['location'],
-                            appointment['notes'],
-                            appointment['appointmentDate'],
-                            appointment['appointmentTime'],
+                        padding: const EdgeInsets.all(16),
+                        itemCount: snapshot.data!.docs.length,
+                        itemBuilder: (context, index) {
+                          var appointment = snapshot.data!.docs[index];
+                          String appointmentId = appointment.id;
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            child: ListTile(
+                              leading:
+                                  const Icon(Icons.event, color: Colors.blue),
+                              trailing: IconButton(
+                                  onPressed: () =>
+                                      deleteAppointment(appointmentId, context),
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  )),
+                              title: Text(
+                                appointment['doctorName'],
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text(
+                                "Date: ${appointment['appointmentDate']} | Time: ${appointment['appointmentTime']}",
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              onTap: () {
+                                _showAppointmentDetails(
+                                  context,
+                                  appointment['doctorName'],
+                                  appointment['doctorPhone'],
+                                  appointment['specialty'],
+                                  appointment['location'],
+                                  appointment['notes'],
+                                  appointment['appointmentDate'],
+                                  appointment['appointmentTime'],
+                                );
+                              },
+                            ),
                           );
                         },
-                      ),
-
-                    );
-                  },
-                )
+                      )
                     : _buildEmptyState(context),
-
                 floatingActionButton: FloatingActionButton(
                   backgroundColor: Colors.blue,
                   onPressed: () => _showBottomSheet(context),
+                  heroTag: 'appointment-fab',
                   child: const Icon(Icons.add, color: Colors.white),
                 ),
               );
@@ -149,37 +159,39 @@ class ManagePage extends StatelessWidget {
           );
         });
   }
- Future <void> deleteAppointment(String appointmentId, BuildContext context) async {
-   try {
-     User? user = FirebaseAuth.instance.currentUser;
-     if (user == null) return;
 
-     FirebaseFirestore firestore = FirebaseFirestore.instance;
+  Future<void> deleteAppointment(
+      String appointmentId, BuildContext context) async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
 
-     // Get the appointment document
-     DocumentSnapshot appointmentSnapshot =
-     await firestore.collection('appointments').doc(appointmentId).get();
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-     if (!appointmentSnapshot.exists) {
-       ScaffoldMessenger.of(context).showSnackBar(
-         const SnackBar(content: Text('Appointment not found')),
-       );
-       return;
-     }
-     await firestore.collection('appointments').doc(appointmentId).delete();
+      // Get the appointment document
+      DocumentSnapshot appointmentSnapshot =
+          await firestore.collection('appointments').doc(appointmentId).get();
 
-     ScaffoldMessenger.of(context).showSnackBar(
-       const SnackBar(content: Text('Appointment deleted successfully!'),
-         backgroundColor: Colors.red,
-       ),
-     );
-   }
-   catch (e) {
-     ScaffoldMessenger.of(context).showSnackBar(
-       SnackBar(content: Text('Error: ${e.toString()}')),
-     );
-   }
- }
+      if (!appointmentSnapshot.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment not found')),
+        );
+        return;
+      }
+      await firestore.collection('appointments').doc(appointmentId).delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Appointment deleted successfully!'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
 
   Widget _buildEmptyState(BuildContext context) {
     return Center(
@@ -208,14 +220,15 @@ class ManagePage extends StatelessWidget {
               ),
             ),
             onPressed: () => _showBottomSheet(context),
-            child: const Text('Get Started', style: TextStyle(fontSize: 18, color: Colors.white)),
+            child: const Text('Get Started',
+                style: TextStyle(fontSize: 18, color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  void _showBottomSheet(BuildContext context) {
+   void _showBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -244,16 +257,17 @@ class ManagePage extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.local_pharmacy, color: Colors.green),
-                title: const Text('Add Pharmacy'),
+                leading: const Icon(FontAwesomeIcons.userDoctor, ),
+                title: const Text('Add Doctor'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AddPharmacy()),
+                    MaterialPageRoute(builder: (context) =>  AddDoctor()),
                   );
                 },
               ),
+              
               const SizedBox(height: 16),
               TextButton(
                 style: TextButton.styleFrom(
@@ -271,5 +285,4 @@ class ManagePage extends StatelessWidget {
       },
     );
   }
-
 }

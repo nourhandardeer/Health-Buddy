@@ -24,7 +24,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, bool> _medTakenStatus = {};
   final FirestoreService _firestoreService = FirestoreService();
 
-
   @override
   void initState() {
     super.initState();
@@ -37,41 +36,103 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-
   Widget _buildUserName() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Text('Guest',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
+          style: TextStyle(
+              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
     }
 
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+      future:
+          FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Text('Loading...',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black));
         } else if (snapshot.hasError) {
           return const Text('Error',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black));
         }
 
         final document = snapshot.data;
 
         if (document == null || !document.exists) {
           return const Text('User',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black));
         }
 
         final data = document.data() as Map<String, dynamic>;
         final fullName = "${data['firstName']} ${data['lastName']}";
 
         return Text(fullName,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black));
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black));
       },
     );
   }
 
+  Widget _buildUserImage() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const CircleAvatar(
+        radius: 40,
+        backgroundColor: Colors.transparent,
+        backgroundImage: AssetImage('images/user.png'),
+      );
+    }
+
+    return FutureBuilder<DocumentSnapshot>(
+      future:
+          FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.transparent,
+            child: CircularProgressIndicator(color: Colors.white),
+          );
+        } else if (snapshot.hasError ||
+            !snapshot.hasData ||
+            !snapshot.data!.exists) {
+          return const CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.transparent,
+            backgroundImage: AssetImage('images/user.png'),
+          );
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final profileImage = data['profileImage'] ?? '';
+
+        if (profileImage == null || profileImage.isEmpty || profileImage == 'images/user.png') {
+          return const CircleAvatar(
+            radius: 18,
+            backgroundColor: Colors.transparent,
+            backgroundImage: AssetImage('images/user.png'),
+          );
+        }
+
+        return CircleAvatar(
+          radius: 20,
+          backgroundColor: Colors.transparent,
+          backgroundImage: NetworkImage(profileImage),
+        );
+      },
+    );
+  }
 
   Widget _buildCalendar() {
     return TableCalendar(
@@ -114,7 +175,6 @@ class _HomeScreenState extends State<HomeScreen> {
         .where('linkedUserIds', arrayContains: user.uid)
         .snapshots()
         .map((snapshot) => snapshot.docs); // Convert snapshot to list of docs
-
   }
 
   Widget _buildAppointmentsWithinTwoDaysRange() {
@@ -133,8 +193,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final appointments = snapshot.data!;
         final selectedDate = _selectedDay ?? _focusedDay;
-        final selectedDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-     //   final oneDayBefore = selectedDay.subtract(const Duration(days: 1));
+        final selectedDay =
+            DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+        //   final oneDayBefore = selectedDay.subtract(const Duration(days: 1));
         final oneDayAfter = selectedDay.add(const Duration(days: 1));
 
         List<QueryDocumentSnapshot> filteredAppointments = [];
@@ -147,16 +208,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
           try {
             final appointmentDate = DateTime.parse(appointmentDateStr);
-            final appointmentDay = DateTime(appointmentDate.year, appointmentDate.month, appointmentDate.day);
+            final appointmentDay = DateTime(appointmentDate.year,
+                appointmentDate.month, appointmentDate.day);
 
-            if (appointmentDay == selectedDay ) {
+            if (appointmentDay == selectedDay) {
               filteredAppointments.add(appointment);
             }
 
             if (appointmentDay == oneDayAfter) {
               final doctorName = data['doctorName'] ?? 'Unknown';
               final appointmentTime = data['appointmentTime'] ?? 'Unknown';
-              reminders.add("you have an appointment zeft tomorrow with Dr. $doctorName at $appointmentTime");            }
+              reminders.add(
+                  "you have an appointment zeft tomorrow with Dr. $doctorName at $appointmentTime");
+            }
           } catch (e) {
             print(" Error parsing date: $appointmentDateStr — $e");
             continue;
@@ -172,7 +236,8 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             if (reminders.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 10.0),
                 child: Column(
                   children: reminders.map((msg) {
                     return Container(
@@ -194,7 +259,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.notifications_active, color: Colors.orange, size: 28),
+                          const Icon(Icons.notifications_active,
+                              color: Colors.orange, size: 28),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -212,21 +278,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   }).toList(),
                 ),
               ),
-
-
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: filteredAppointments.length,
               itemBuilder: (context, index) {
-                final data = filteredAppointments[index].data() as Map<String, dynamic>;
+                final data =
+                    filteredAppointments[index].data() as Map<String, dynamic>;
 
                 final doctorName = data['doctorName'] ?? 'Unknown';
                 final appointmentDate = data['appointmentDate'] ?? 'N/A';
                 final appointmentTime = data['appointmentTime'] ?? 'N/A';
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -240,7 +306,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     child: ListTile(
-                      leading: const Icon(Icons.calendar_month, size: 40, color: Colors.blue),
+                      leading: const Icon(Icons.calendar_month,
+                          size: 40, color: Colors.blue),
                       title: Text("Dr. $doctorName"),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,7 +327,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
   // ================ Medications ===================
   Stream<List<QueryDocumentSnapshot>> fetchMedsCollectionAll() {
     final user = FirebaseAuth.instance.currentUser;
@@ -273,7 +339,6 @@ class _HomeScreenState extends State<HomeScreen> {
         .where('linkedUserIds', arrayContains: user.uid) // Filter meds for user
         .snapshots()
         .map((snapshot) => snapshot.docs); // Convert snapshot to list of docs
-
   }
 
   Widget _buildMedicationsList() {
@@ -297,7 +362,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         var filteredMeds = medications.where((doc) {
           var medData = doc.data() as Map<String, dynamic>;
-          String frequency = (medData['frequency'] ?? '').toString().toLowerCase();
+          String frequency =
+              (medData['frequency'] ?? '').toString().toLowerCase();
 
           final selectedDate = _selectedDay ?? _focusedDay;
           final todayName = getDayName(selectedDate.weekday);
@@ -308,7 +374,8 @@ class _HomeScreenState extends State<HomeScreen> {
             if (onceAWeekDay == null || onceAWeekDay != todayName) {
               return false;
             }
-            if (_medTakenStatus.containsKey(medId) && _medTakenStatus[medId] == true) {
+            if (_medTakenStatus.containsKey(medId) &&
+                _medTakenStatus[medId] == true) {
               return false;
             }
             return true;
@@ -319,22 +386,24 @@ class _HomeScreenState extends State<HomeScreen> {
             if (specificDays.isNotEmpty && !specificDays.contains(todayName)) {
               return false;
             }
-            if (_medTakenStatus.containsKey(medId) && _medTakenStatus[medId] == true) {
+            if (_medTakenStatus.containsKey(medId) &&
+                _medTakenStatus[medId] == true) {
               return false;
             }
             return true;
           }
 
-
           if (frequency == 'once a day') {
-            if (_medTakenStatus.containsKey('${medId}_1') && _medTakenStatus['${medId}_1'] == true) {
+            if (_medTakenStatus.containsKey('${medId}_1') &&
+                _medTakenStatus['${medId}_1'] == true) {
               return false;
             }
             return true;
           }
 
           if (frequency == 'twice a day') {
-            if ((_medTakenStatus['${medId}_1'] ?? false) && (_medTakenStatus['${medId}_2'] ?? false)) {
+            if ((_medTakenStatus['${medId}_1'] ?? false) &&
+                (_medTakenStatus['${medId}_2'] ?? false)) {
               return false;
             }
             return true;
@@ -350,15 +419,13 @@ class _HomeScreenState extends State<HomeScreen> {
           }
 
           // default fallback
-          if (_medTakenStatus.containsKey(medId) && _medTakenStatus[medId] == true) {
+          if (_medTakenStatus.containsKey(medId) &&
+              _medTakenStatus[medId] == true) {
             return false;
           }
 
           return true;
         }).toList();
-
-
-
 
         return ListView.builder(
           shrinkWrap: true,
@@ -368,7 +435,8 @@ class _HomeScreenState extends State<HomeScreen> {
             var med = filteredMeds[index];
             var medData = med.data() as Map<String, dynamic>;
 
-            String frequency = (medData['frequency'] ?? '').toString().toLowerCase();
+            String frequency =
+                (medData['frequency'] ?? '').toString().toLowerCase();
             String rawTime = "";
             String doseKey = med.id;
 
@@ -399,7 +467,8 @@ class _HomeScreenState extends State<HomeScreen> {
             String timeText = formatReminderTime(rawTime);
 
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -415,7 +484,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 12),
                       if (!(_medTakenStatus[doseKey] ?? false) &&
-                          isSameDay(_selectedDay ?? _focusedDay, DateTime.now()))
+                          isSameDay(
+                              _selectedDay ?? _focusedDay, DateTime.now()))
                         Checkbox(
                           value: false,
                           onChanged: (bool? value) async {
@@ -446,7 +516,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text("Dosage: ${medData['dosage']} ${medData['unit']}"),
+                                  Text(
+                                      "Dosage: ${medData['dosage']} ${medData['unit']}"),
                                   const SizedBox(height: 8),
                                   Text("Frequency: ${medData['frequency']}"),
                                   const SizedBox(height: 8),
@@ -503,16 +574,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                       "${medData['dosage'] ?? '1'} ${medData['unit'] ?? 'pill(s)'}",
                                       style: const TextStyle(
                                           fontSize: 14, color: Colors.black)),
-                                  if (medData['intakeAdvice'] != null && medData['intakeAdvice'].toString().isNotEmpty)
+                                  if (medData['intakeAdvice'] != null &&
+                                      medData['intakeAdvice']
+                                          .toString()
+                                          .isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: Text(
                                         "Advice: ${medData['intakeAdvice']}",
-                                        style: const TextStyle(fontSize: 14, color: Colors.teal),
+                                        style: const TextStyle(
+                                            fontSize: 14, color: Colors.teal),
                                       ),
                                     ),
                                   const SizedBox(height: 4),
-                                  Text("Frequency: ${medData['frequency'] ?? 'Specific Days'}",
+                                  Text(
+                                      "Frequency: ${medData['frequency'] ?? 'Specific Days'}",
                                       style: const TextStyle(
                                           fontSize: 14, color: Colors.black54)),
                                 ],
@@ -532,15 +608,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-
-
   bool isFutureDay(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return date.isAfter(today);
   }
-
 
   bool isTodaySelected() {
     final today = DateTime.now();
@@ -578,6 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return time.trim();
   }
+
   void loadTakenMedsForToday() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -611,7 +684,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
   Future<void> markMedicationAsTaken(String doseKey, String dosageStr) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -639,7 +711,8 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final baseMedId = doseKey.contains('_') ? doseKey.split('_')[0] : doseKey;
-      final medDocRef = FirebaseFirestore.instance.collection('meds').doc(baseMedId);
+      final medDocRef =
+          FirebaseFirestore.instance.collection('meds').doc(baseMedId);
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final medSnapshot = await transaction.get(medDocRef);
@@ -648,7 +721,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final medData = medSnapshot.data() as Map<String, dynamic>;
         final currentInventory = (medData['currentInventory'] ?? 0).toDouble();
         final dosage = double.tryParse(dosageStr) ?? 0;
-        final newInventory = (currentInventory - dosage).clamp(0, double.infinity);
+        final newInventory =
+            (currentInventory - dosage).clamp(0, double.infinity);
 
         transaction.update(medDocRef, {'currentInventory': newInventory});
       });
@@ -656,8 +730,6 @@ class _HomeScreenState extends State<HomeScreen> {
       print('Error updating medication: $e');
     }
   }
-
-
 
   Future<void> loadTakenMedsForDate(DateTime date) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -679,7 +751,6 @@ class _HomeScreenState extends State<HomeScreen> {
         for (var doc in snapshot.docs) {
           final doseKey = doc['medId'];
           _medTakenStatus[doseKey] = true;
-
         }
       });
     } catch (e) {
@@ -687,17 +758,18 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
   Widget _homeScreenContent() {
     return SingleChildScrollView(
       child: Column(
         children: [
           _buildCalendar(),
           const SizedBox(height: 10),
-          const Text("Medications", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Medications",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           _buildMedicationsList(),
           const SizedBox(height: 20),
-          const Text("Appointments", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Appointments",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           _buildAppointmentsWithinTwoDaysRange(),
         ],
       ),
@@ -711,20 +783,32 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.account_circle, size: 40, color: Colors.black),
-          onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfilePage()));
-          },
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                );
+              },
+              child: _buildUserImage(),
+            ),
+            const SizedBox(width: 15),
+            Expanded(child: _buildUserName()),
+          ],
         ),
-        title: _buildUserName(),
         actions: [
-          IconButton(icon: const Icon(Icons.notifications, color: Colors.black), onPressed: () {}),
           IconButton(
-              icon: const Icon(Icons.settings, color: Colors.black),
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()));
-              }),
+            icon: const Icon(Icons.settings, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+            },
+          ),
         ],
       ),
       body: IndexedStack(
@@ -745,8 +829,11 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.auto_mode), label: 'Refills'),
-          BottomNavigationBarItem(icon: Icon(Icons.medication_liquid_outlined), label: 'Medications'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.auto_mode), label: 'Refills'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.medication_liquid_outlined),
+              label: 'Medications'),
           BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'Manage'),
         ],
       ),

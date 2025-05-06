@@ -10,8 +10,10 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   double _opacity = 0.0;
+  late Timer _navigationTimer;
 
   @override
   void initState() {
@@ -19,30 +21,44 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     // Start fade-in animation
     Future.delayed(Duration(milliseconds: 500), () {
-      setState(() {
-        _opacity = 1.0;
-      });
+      if (mounted) {
+        setState(() {
+          _opacity = 1.0;
+        });
+      }
     });
 
     // Navigate to home after 3 seconds
-    Timer(Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
-      );
+    _navigationTimer = Timer(Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _navigationTimer.cancel(); // Prevent timer from firing after dispose
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      
-      backgroundColor: Colors.brown.shade100, // Change background color if needed
+      backgroundColor:
+          Colors.brown.shade100, // Change background color if needed
       body: Center(
         child: AnimatedOpacity(
           duration: Duration(seconds: 2), // Smooth fade-in effect
           opacity: _opacity,
-          child: Image.asset('images/logo.png', width: 200,height: 200,), // Logo image
+          child: Image.asset(
+            'images/logo.png',
+            width: 200,
+            height: 200,
+          ), // Logo image
         ),
       ),
     );

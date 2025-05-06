@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:graduation_project/NavigationBar/manage_page.dart';
 import 'package:intl/intl.dart';
 import 'package:graduation_project/home.dart';
+import '../services/notification_service.dart';
 
 import '../services/firestore_service.dart';
 
@@ -15,6 +16,17 @@ class AddAppointment extends StatefulWidget {
 }
 
 class _AddAppointmentState extends State<AddAppointment> {
+  bool _isLoading = false;
+
+  List<String> suggestedDoctorNames = [];
+  Map<String, Map<String, dynamic>> doctorDetailsMap = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDoctorSuggestions(); // Load previous doctor names
+  }
+
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -63,12 +75,15 @@ class _AddAppointmentState extends State<AddAppointment> {
       );
       return;
     }
+    setState(() {
+      _isLoading = true;
+    });
     String uid = user!.uid;
 
     try {
       // Fetch the current user's document
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection(
-          'users').doc(uid).get();
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       String? phoneNumber = userDoc['phone']; // Fetch user's phone number
 
       if (phoneNumber == null) {
@@ -89,17 +104,77 @@ class _AddAppointmentState extends State<AddAppointment> {
           'appointmentTime': selectedTime!.format(context),
           'createdAt': FieldValue.serverTimestamp(),
           //'linkedUserIds': linkedUsers,
-
         },
       );
+      DateTime appointmentDateTime = DateTime(
+        selectedDate!.year,
+        selectedDate!.month,
+        selectedDate!.day,
+        selectedTime!.hour,
+        selectedTime!.minute,
+      );
+
+      // Schedule notification 30 minutes before appointment
+      final DateTime reminderTime =
+          appointmentDateTime.subtract(const Duration(minutes: 60));
+
+      await NotificationService.scheduleNotification(
+        id: appointmentDateTime.millisecondsSinceEpoch
+            .remainder(100000), // unique-ish ID
+        title: 'Appointment Reminder',
+        body:
+            'You have an appointment with Dr. ${doctorNameController.text} at ${selectedTime!.format(context)}',
+        scheduledTime: reminderTime,
+        ttsMessage:
+            'Reminder! Appointment with Dr. ${doctorNameController.text} at ${selectedTime!.format(context)}.',
+      );
+
       Navigator.pop(context);
-    }
-    catch (e) {
+      } catch (e) {
       print("Error saving medication: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving data: $e'),
+        SnackBar(
+            content: Text('Error saving data: $e'),
             backgroundColor: Colors.red),
       );
+      } finally {
+      setState(() {
+        _isLoading = false;
+      });
+      }
+    }
+
+  Future<void> _loadDoctorSuggestions() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      final snapshot = await _firestore
+          .collection('doctors')
+          .where('linkedUserIds', arrayContains: uid)
+          .get();
+      // Also get appointments directly created by the current user
+      final ownSnapshot = await _firestore
+          .collection('doctors')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      Set<String> namesSet = {};
+      Map<String, Map<String, dynamic>> detailsMap = {};
+
+      for (var doc in snapshot.docs) {
+        String name = doc['doctorName'];
+        namesSet.add(name);
+
+        detailsMap[name] = {
+          'phone': doc['doctorPhone'],
+          'specialty': doc['specialty'],
+          'location': doc['location'],
+        };
+      }
+
+      setState(() {
+        suggestedDoctorNames = namesSet.toList();
+        doctorDetailsMap = detailsMap;
+      });
     }
   }
 
@@ -131,7 +206,45 @@ class _AddAppointmentState extends State<AddAppointment> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField('Doctor Name', doctorNameController),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Doctor Name',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Autocomplete<String>(
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      return suggestedDoctorNames.where((name) => name
+                          .toLowerCase()
+                          .contains(textEditingValue.text.toLowerCase()));
+                    },
+                    onSelected: (String selection) {
+                      doctorNameController.text = selection;
+                      final details = doctorDetailsMap[selection];
+                      if (details != null) {
+                        doctorPhoneController.text = details['phone'] ?? '';
+                        specialtyController.text = details['specialty'] ?? '';
+                        locationController.text = details['location'] ?? '';
+                      }
+                    },
+                    fieldViewBuilder:
+                        (context, controller, focusNode, onEditingComplete) {
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        onEditingComplete: onEditingComplete,
+                        onChanged: (value) => doctorNameController.text = value,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
               _buildTextField('Doctor Phone', doctorPhoneController),
               _buildTextField('Specialty', specialtyController),
               _buildTextField('Location', locationController),
@@ -179,13 +292,17 @@ class _AddAppointmentState extends State<AddAppointment> {
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: _saveAppointment,
+                onPressed: _isLoading ? null : _saveAppointment,
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
                   backgroundColor: Colors.blue,
                 ),
-                child: const Text('Save Appointment',
-                    style: TextStyle(color: Colors.white)),
+                child: _isLoading
+                    ? const CircularProgressIndicator(
+                        color: Colors.white,
+                      )
+                    : const Text('Save Appointment',
+                        style: TextStyle(color: Colors.white)),
               ),
             ],
           ),

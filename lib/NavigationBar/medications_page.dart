@@ -31,6 +31,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
           );
         },
         backgroundColor: Colors.blue,
+        heroTag: 'medications-fab',
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
