@@ -66,7 +66,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             : defaultProfileImage, // Store image path or empty
         'age': _ageController.text.trim(),
         'illnesses': _illnessesController.text.trim(),
-        'emergencyContacts': emergencyContacts,
+       // 'emergencyContacts': emergencyContacts,
         'phone': _phone.text.trim(),// Store list of contacts
       });
 
@@ -176,7 +176,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   return ListTile(
                     title: Text(emergencyContacts[index]["name"]!),
                     subtitle: Text(
-                        "${emergencyContacts[index]["relation"]!} - ${emergencyContacts[index]["phone"]!}"),
+                        " ${emergencyContacts[index]["phone"]!}"),
                     trailing: IconButton(
                       icon: Icon(Icons.delete, color: Colors.red),
                       onPressed: () {

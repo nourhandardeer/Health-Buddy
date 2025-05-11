@@ -60,6 +60,7 @@ flutter:
     - images/syringe.png
     - images/user.png
     - assets/
+    - images/
     #  - assets/sounds/notification_sound.mp3
 
 

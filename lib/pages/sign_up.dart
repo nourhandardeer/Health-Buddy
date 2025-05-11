@@ -21,6 +21,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
 
   String? errorMessage = '';
+  bool _showEmailVerifiedButton = false;
 
   Future<void> _register() async {
     try {
@@ -42,20 +43,38 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (errorMsg == null) {
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          // Save basic user details in Firestore
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-            'firstName': firstName,
-            'lastName': lastName,
-            'email': email,
-            'phone': phone,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+          // Send verification email
+          await user.sendEmailVerification();
 
+
+         // if (!user!.emailVerified) {
+            // Show a dialog or page telling them to verify
+            await showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text("Email Verification Required"),
+                content: const Text("We’ve sent a verification link to your email. Please verify it, then click the button below."),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("OK"),
+                  ),
+                ],
+              ),
+            );
+
+            await FirebaseAuth.instance.signOut();
+
+     // Show "I’ve Verified" button (set a flag in your widget)
+            setState(() {
+              _showEmailVerifiedButton = true;
+            });
+
+         // }
           // **Check if this email is listed as an emergency contact**
-          await checkAndLinkEmergencyContact(user);
+         // await checkAndLinkEmergencyContact(user);
 
           // Navigate to Profile Setup Page
-          _onSignupSuccess(user.uid, firstName, lastName, phone);
         } else {
           setState(() {
             errorMessage = "Signup failed. Please try again.";
@@ -66,11 +85,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
           errorMessage = errorMsg;
         });
       }
+
     } catch (e) {
+      print("Registration error: $e"); // Add this
       setState(() {
-        errorMessage = "An unexpected error occurred. Please try again.";
+        //errorMessage = e as String?;
       });
-    }
+
+  }
   }
 
   void _onSignupSuccess(String userId, String firstName, String lastName, String phone) {
@@ -111,6 +133,56 @@ class _SignUpScreenState extends State<SignUpScreen> {
       print("Error checking emergency contact linkage: $e");
     }
   }
+
+  Future<void> _checkIfEmailVerified() async {
+    try {
+      final String email = emailController.text.trim();
+      final String password = passwordController.text.trim();
+
+      // Re-sign in the user
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      final user = userCredential.user;
+      await user?.reload();
+      final refreshedUser = FirebaseAuth.instance.currentUser;
+
+      if (refreshedUser != null && refreshedUser.emailVerified) {
+        // Save to Firestore
+        await Auth().saveUserToFirestore(
+          uid: refreshedUser.uid,
+          firstName: firstNameController.text.trim(),
+          lastName: lastNameController.text.trim(),
+          email: refreshedUser.email!,
+          phone: phoneController.text.trim(),
+        );
+
+        // Link emergency contact if applicable
+        await checkAndLinkEmergencyContact(refreshedUser);
+
+        // Proceed to the next screen
+        _onSignupSuccess(
+          refreshedUser.uid,
+          firstNameController.text.trim(),
+          lastNameController.text.trim(),
+          phoneController.text.trim(),
+        );
+      } else {
+        setState(() {
+          errorMessage = "Email not verified yet. Please check again.";
+        });
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        errorMessage = e.message ?? "Login failed. Please try again.";
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = "An unexpected error occurred.";
+      });
+    }
+  }
+
 
 
   @override
@@ -164,7 +236,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: const Text("Sign Up", style: TextStyle(color: Colors.white)),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 5),
+              if (_showEmailVerifiedButton)
+                ElevatedButton(
+                  onPressed: _checkIfEmailVerified,
+                  child: const Text("I’ve Verified My Email"),
+                ),
+              const SizedBox(height: 5),
 
               // Navigate to Login Screen
               TextButton(
@@ -215,3 +293,4 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
+
