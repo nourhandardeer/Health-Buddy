@@ -219,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
               final doctorName = data['doctorName'] ?? 'Unknown';
               final appointmentTime = data['appointmentTime'] ?? 'Unknown';
               reminders.add(
-                  "you have an appointment zeft tomorrow with Dr. $doctorName at $appointmentTime");
+                  "you have an appointment tomorrow with Dr. $doctorName at $appointmentTime");
             }
           } catch (e) {
             print(" Error parsing date: $appointmentDateStr — $e");

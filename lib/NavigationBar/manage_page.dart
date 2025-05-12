@@ -257,7 +257,7 @@ class ManagePage extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(FontAwesomeIcons.userDoctor, ),
+                leading: const Icon(FontAwesomeIcons.userDoctor,color: Colors.blue ),
                 title: const Text('Add Doctor'),
                 onTap: () {
                   Navigator.pop(context);

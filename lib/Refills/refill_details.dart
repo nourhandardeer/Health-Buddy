@@ -25,7 +25,6 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      // Show a message if location services are disabled
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Location services are disabled.")),
       );
@@ -37,8 +36,7 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.deniedForever) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Location permission is permanently denied.")),
+          const SnackBar(content: Text("Location permission is permanently denied.")),
         );
         return;
       }
@@ -73,8 +71,17 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+    // Safely parse currentInventory to avoid type errors
+    int inventory = 0;
+    var rawInventory = widget.medData["currentInventory"];
+    if (rawInventory is String) {
+      inventory = int.tryParse(rawInventory) ?? 0;
+    } else if (rawInventory is num) {
+      inventory = rawInventory.toInt();
+    }
 
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(widget.medData["name"] ?? "Medication Details"),
       ),
@@ -90,8 +97,7 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
             Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -102,13 +108,16 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                     _buildDetailRow(Icons.format_list_numbered, "Dosage",
                         widget.medData["dosage"] ?? "Not specified"),
                     _buildDetailRow(Icons.inventory, "Current Inventory",
-                        "${widget.medData["currentInventory"] ?? "0"} ${widget.medData["unit"] ?? ""}"),
+                        "$inventory ${widget.medData["unit"] ?? ""}"),
                     _buildDetailRow(Icons.access_time, "Reminder Time",
-                        widget.medData["reminderTime"] ?? "Not set"),
-                    _buildDetailRow(Icons.date_range, "Next Refill Date",
-                        widget.medData["nextRefillDate"] ?? "Not available"),
-                    _buildDetailRow(Icons.person, "Doctor’s Notes",
-                        widget.medData["doctorNotes"] ?? "No notes available"),
+                        widget.medData["reminderTime1"] ?? "Not set"),
+                    // _buildDetailRow(Icons.date_range, "Next Refill Date",
+                    //     widget.medData["nextRefillDate"] ?? "Not available"),
+                    _buildDetailRow(Icons.date_range, "Reminder To Refill When",
+                       "${(widget.medData["remindMeWhen"] as num?)?.toStringAsFixed(0) ?? "0"} ${widget.medData["unit"] ?? ""}",
+                     ),
+                    // _buildDetailRow(Icons.person, "Doctor’s Notes",
+                    //     widget.medData["doctorNotes"] ?? "No notes available"),
                   ],
                 ),
               ),
@@ -116,48 +125,43 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
             const SizedBox(height: 20),
 
-            // Pharmacy Locator Section
             const Text(
               "Find a Nearby Pharmacy",
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
 
-            // Google Map Preview
             _currentPosition == null
                 ? const Center(child: CircularProgressIndicator())
                 : SizedBox(
-                    height: 200,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: LatLng(_currentPosition!.latitude,
-                              _currentPosition!.longitude),
-                          zoom: 14,
-                        ),
-                        markers: {
-                          Marker(
-                            markerId: const MarkerId("userLocation"),
-                            position: LatLng(_currentPosition!.latitude,
-                                _currentPosition!.longitude),
-                            infoWindow: const InfoWindow(title: "You are here"),
-                          ),
-                        },
-                        onMapCreated: (GoogleMapController controller) {
-                          if (mounted) {
-                            setState(() {
-                              _mapController = controller;
-                            });
-                          }
-                        },
-                      ),
-                    ),
+              height: 200,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                    zoom: 14,
                   ),
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId("userLocation"),
+                      position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                      infoWindow: const InfoWindow(title: "You are here"),
+                    ),
+                  },
+                  onMapCreated: (GoogleMapController controller) {
+                    if (mounted) {
+                      setState(() {
+                        _mapController = controller;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ),
 
             const SizedBox(height: 20),
 
-            // Buttons Section
             Row(
               children: [
                 Expanded(
@@ -165,8 +169,9 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                     icon: const Icon(Icons.map),
                     label: const Text("Open Google Maps"),
                     style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                        backgroundColor: Colors.blue),
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: Colors.blue,
+                    ),
                     onPressed: _openGoogleMaps,
                   ),
                 ),
@@ -176,8 +181,9 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                     icon: const Icon(Icons.local_pharmacy),
                     label: const Text("Find a Pharmacy"),
                     style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                        backgroundColor: Colors.green),
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: Colors.green,
+                    ),
                     onPressed: _openGoogleMaps,
                   ),
                 ),
@@ -202,7 +208,7 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
           ),
           Expanded(
             child: Text(
-              value?.toString() ?? "Not available", // Convert value to string
+              value?.toString() ?? "Not available",
               style: const TextStyle(color: Colors.black54),
               overflow: TextOverflow.ellipsis,
             ),
