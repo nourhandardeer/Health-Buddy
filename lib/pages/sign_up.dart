@@ -78,7 +78,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
           errorMessage = errorMsg;
         });
       }
+
     } catch (e) {
+      print("Registration error: $e"); // Add this
       setState(() {
         errorMessage = "An unexpected error occurred.";
       });
@@ -86,7 +88,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       setState(() {
         _isLoading = false;
       });
-    }
+
+  }
   }
 
   void _onSignupSuccess(
@@ -121,6 +124,56 @@ class _SignUpScreenState extends State<SignUpScreen> {
       print("Error checking emergency contact linkage: \$e");
     }
   }
+  Future<void> _checkIfEmailVerified() async {
+    try {
+      final String email = emailController.text.trim();
+      final String password = passwordController.text.trim();
+
+      // Re-sign in the user
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      final user = userCredential.user;
+      await user?.reload();
+      final refreshedUser = FirebaseAuth.instance.currentUser;
+
+      if (refreshedUser != null && refreshedUser.emailVerified) {
+        // Save to Firestore
+        await Auth().saveUserToFirestore(
+          uid: refreshedUser.uid,
+          firstName: firstNameController.text.trim(),
+          lastName: lastNameController.text.trim(),
+          email: refreshedUser.email!,
+          phone: phoneController.text.trim(),
+        );
+
+        // Link emergency contact if applicable
+        await checkAndLinkEmergencyContact(refreshedUser);
+
+        // Proceed to the next screen
+        _onSignupSuccess(
+          refreshedUser.uid,
+          firstNameController.text.trim(),
+          lastNameController.text.trim(),
+          phoneController.text.trim(),
+        );
+      } else {
+        setState(() {
+          errorMessage = "Email not verified yet. Please check again.";
+        });
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        errorMessage = e.message ?? "Login failed. Please try again.";
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = "An unexpected error occurred.";
+      });
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -290,3 +343,5 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
+
+

@@ -11,6 +11,7 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: Center(
         // Center the entire column
+        // Center the entire column
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center, // Center vertically
           crossAxisAlignment: CrossAxisAlignment.center, // Center horizontally
@@ -27,11 +28,23 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => SignUpScreen()),
                 );
               },
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to Sign In Page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SignUpScreen()),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade900,
                 padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
                 textStyle: TextStyle(fontSize: 15, color: Colors.white),
+                backgroundColor: Colors.blue.shade900,
+                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
+                textStyle: TextStyle(fontSize: 15, color: Colors.white),
                 shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),

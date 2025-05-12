@@ -14,7 +14,6 @@ class RefillsPage extends StatefulWidget {
 
 class _RefillsPageState extends State<RefillsPage> {
   final Set<String> _notifiedMeds = {};
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -50,105 +49,83 @@ class _RefillsPageState extends State<RefillsPage> {
           return Center(child: Text("Error: ${snapshot.error}"));
         }
 
-        var documents = snapshot.data?.docs;
-        if (documents == null || documents.isEmpty) {
+        var documents = snapshot.data?.docs ?? [];
+        if (documents.isEmpty) {
           return const Center(child: Text("No refills needed"));
         }
 
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: documents.length,
-          separatorBuilder: (context, index) =>
-              const Divider(thickness: 1, color: Colors.grey),
+          separatorBuilder: (_, __) => const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
-            var data = documents[index].data() as Map<String, dynamic>;
+            final data = documents[index].data() as Map<String, dynamic>;
+            final medName = data["name"]?.toString() ?? "Unknown Medication";
 
-            int inventory = (data['currentInventory'] is int)
-                ? data['currentInventory'] as int
-                : (data['currentInventory'] as double?)?.toInt() ?? 0;
-
-            String reminderTime1 = data["reminderTime1"] ?? "Not set";
-            // String reminderTime2 = data["reminderTime2"] ?? "Not set";
-
-            // Convert reminder times to DateTime objects
-            DateTime? scheduledTime1;
-            //DateTime? scheduledTime2;
-
-            if (reminderTime1 != "Not set") {
-              scheduledTime1 = _convertTimeToDateTime(reminderTime1);
+            // Inventory parsing
+            int inventory = 0;
+            final inventoryRaw = data['currentInventory'];
+            if (inventoryRaw is int) {
+              inventory = inventoryRaw;
+            } else if (inventoryRaw is double) {
+              inventory = inventoryRaw.toInt();
+            } else if (inventoryRaw is String) {
+              inventory = int.tryParse(inventoryRaw) ?? 0;
             }
 
-            /*if (reminderTime2 != "Not set") {
-              scheduledTime2 = _convertTimeToDateTime(reminderTime2);
-            }*/
-            int remindMeWhen = data['remindMeWhen'] ?? 5;
+            // Reminder threshold
+            int remindMeWhen = 5;
+            final thresholdRaw = data['remindMeWhen'];
+            if (thresholdRaw is String) {
+              remindMeWhen = int.tryParse(thresholdRaw) ?? 5;
+            } else if (thresholdRaw is num) {
+              remindMeWhen = thresholdRaw.toInt();
+            }
 
-            // Schedule notifications if inventory is low
-            // Schedule notifications if inventory is low and not already scheduled
-            print("Checking med: ${data['name']}");
-            print("Inventory: $inventory | Threshold: $remindMeWhen");
-            print("ReminderTime1: $reminderTime1 → $scheduledTime1");
+            final reminderTimeStr = data["reminderTime1"] ?? "Not set";
+            DateTime? scheduledTime = reminderTimeStr != "Not set"
+                ? _convertTimeToDateTime(reminderTimeStr)
+                : null;
 
             if (inventory > 0 &&
                 inventory <= remindMeWhen &&
-                !_notifiedMeds.contains(data["name"])) {
-              print(">> Scheduling notification for ${data['name']}");
-              _notifiedMeds.add(data["name"]); // mark as scheduled
+                !_notifiedMeds.contains(medName)) {
+              _notifiedMeds.add(medName);
 
-              //if (scheduledTime1 != null) {
-              // DateTime reminderTimeWithDelay =
-              // scheduledTime1.add(const Duration(seconds: 5));
-              DateTime now = DateTime.now();
-              DateTime scheduledTime = now.add(Duration(seconds: 5));
+              final DateTime now = DateTime.now();
+              final DateTime notificationTime = now.add(const Duration(seconds: 5));
+
               NotificationService.scheduleNotification(
-                  id: data['name'].hashCode ^ scheduledTime1.hashCode,
-                  title: "Refill Reminder: ${data["name"]}",
-                  body: "Your medication inventory is low! Please refill soon.",
-                  ttsMessage:
-                      "Your medication ${data["name"]} inventory is low! Please refill soon.",
-                  scheduledTime: scheduledTime,
-                  speakImmediately: true);
-              //}
-
-              /*if (scheduledTime2 != null) {
-                NotificationService.scheduleNotification(
-                  id: data['name'].hashCode ^ scheduledTime2.hashCode,
-                  title: "Refill Reminder: ${data["name"]}",
-                  body: "Your medication inventory is low! Please refill soon.",
-                  scheduledTime: scheduledTime2,
-                );
-              }*/
+                id: medName.hashCode ^ notificationTime.hashCode,
+                title: "Refill Reminder: $medName",
+                body: "Your medication inventory is low! Please refill soon.",
+                ttsMessage: "Your medication $medName inventory is low! Please refill soon.",
+                scheduledTime: notificationTime,
+                speakImmediately: true,
+              );
             }
 
             return Card(
               color: Colors.grey[200],
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ListTile(
-                leading: Image.asset(
-                  "images/drugs.png",
-                  width: 50,
-                  height: 50,
-                  fit: BoxFit.cover,
-                ),
+                leading: Image.asset("images/drugs.png", width: 50, height: 50),
                 trailing: const Icon(Icons.notifications, size: 35),
                 title: Text(
-                  data["name"] ?? "Unknown Medication",
+                  medName,
                   style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black),
+                    fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black,
+                  ),
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Current Inventory: ${inventory} ${data["unit"] ?? ""}",
+                      "Current Inventory: $inventory ${data["unit"] ?? ""}",
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     Text(
-                      "Reminder Time: $reminderTime1",
+                      "Reminder Time: $reminderTimeStr",
                       style: const TextStyle(fontSize: 14, color: Colors.blue),
                     ),
                   ],
@@ -170,12 +147,13 @@ class _RefillsPageState extends State<RefillsPage> {
   }
 
   DateTime _convertTimeToDateTime(String timeStr) {
-    DateFormat format = DateFormat("hh:mm a");
-    DateTime time = format.parse(timeStr);
-    DateTime now = DateTime.now();
-    DateTime scheduledTime =
-        DateTime(now.year, now.month, now.day, time.hour, time.minute);
-
-    return scheduledTime;
+    try {
+      final format = DateFormat("hh:mm a");
+      final time = format.parse(timeStr);
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 }

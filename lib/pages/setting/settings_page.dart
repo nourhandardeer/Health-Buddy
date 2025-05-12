@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:health_buddy/pages/EditProfilePage.dart';
@@ -15,6 +16,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    TextEditingController passwordController = TextEditingController();
 
     return Scaffold(
       appBar: AppBar(
@@ -85,6 +87,54 @@ class SettingsPage extends StatelessWidget {
           ),
           Divider(),
 
+          ListTile(
+            leading: Icon(Icons.delete_forever, color: Colors.red),
+            title: Text('Delete my account'),
+            onTap: () async {
+              final passwordController = TextEditingController();
+
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Confirm Account Deletion'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Please enter your password to delete your account.'),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: 'Password'),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                try {
+                  await deleteAccountAndData(passwordController.text.trim());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Account deleted successfully')),
+                  );
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const SplashScreen()),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Incorrect password')),
+                  );
+                }
+              }
+            },
+
+          ),
+          Divider(),
+
           // Logout Button
           ListTile(
             leading: Icon(Icons.logout, color: Colors.red),
@@ -101,8 +151,65 @@ class SettingsPage extends StatelessWidget {
           ),
         ],
       ),
+
     );
   }
+  Future<void> deleteAccountAndData(String password) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    final userId = user.uid;
+
+    try {
+      // 🔐 Re-authenticate user before deletion (required by Firebase)
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // 🗑️ 1. Delete Firestore user data
+      await FirebaseFirestore.instance.collection('users').doc(userId).delete();
+
+      // 🗑️ 2. Delete subcollections like emergencyContacts or medications
+      final subcollections = ['emergencyContacts', 'medications'];
+      for (final sub in subcollections) {
+        final subDocs = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection(sub)
+            .get();
+
+        for (final doc in subDocs.docs) {
+          await doc.reference.delete();
+        }
+      }
+
+      // 🗑️ 3. Delete from emergency_contacts if phone is listed
+      final phone = user.phoneNumber; // Or retrieve from Firestore
+      if (phone != null && phone.isNotEmpty) {
+        final emergencyRef = FirebaseFirestore.instance.collection('emergency_contacts').doc(phone);
+        final emergencyDoc = await emergencyRef.get();
+        if (emergencyDoc.exists) {
+          await emergencyRef.delete();
+        }
+      }
+
+      // 🔥 4. Delete from Firebase Auth
+      await user.delete();
+
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw Exception('Please log in again to delete your account.');
+      } else {
+        throw Exception('Failed to delete account: ${e.message}');
+      }
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
+    }
+  }
+
 
   // Function to show the Security options dialog
   void _showSecurityOptions(BuildContext context) {

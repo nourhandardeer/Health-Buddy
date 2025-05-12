@@ -12,6 +12,7 @@ class EmergencyContactPage extends StatefulWidget {
   @override
   _EmergencyContactPageState createState() => _EmergencyContactPageState();
 }
+Map<String, dynamic>? patientLocation;
 
 class _EmergencyContactPageState extends State<EmergencyContactPage> {
   List<Map<String, dynamic>> _emergencyContacts = [];
@@ -66,6 +67,9 @@ class _EmergencyContactPageState extends State<EmergencyContactPage> {
         if (patientDoc.exists) {
           setState(() {
             patientData = patientDoc.data();
+             if (patientData != null && patientData!['location'] != null) {
+            patientLocation = Map<String, dynamic>.from(patientData!['location']);
+          }
           });
         }
       });
@@ -200,7 +204,9 @@ class _EmergencyContactPageState extends State<EmergencyContactPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
+              
               child: ListView.builder(
+                
                 itemCount: _emergencyContacts.length,
                 itemBuilder: (context, index) {
                   var contact = _emergencyContacts[index];
@@ -222,6 +228,18 @@ class _EmergencyContactPageState extends State<EmergencyContactPage> {
                 },
               ),
             ),
+            if (patientLocation != null) ...[
+  Text(
+    "Patient Location:",
+    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+  ),
+  Text(
+    "Latitude: ${patientLocation!['latitude']}, Longitude: ${patientLocation!['longitude']}",
+    style: TextStyle(fontSize: 16),
+  ),
+  SizedBox(height: 12),
+],
+
             ElevatedButton(
               onPressed: _addEmergencyContact,
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: EdgeInsets.symmetric(vertical: 12)),

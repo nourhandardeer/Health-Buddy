@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/locationHelper.dart'; // تأكدي من المسار هنا
 
 class RefillDetailsPage extends StatefulWidget {
   final Map<String, dynamic> medData;
@@ -22,41 +23,16 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
     _getCurrentLocation();
   }
 
+  /// Get Current Location and Update Firestore
   Future<void> _getCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // Show a message if location services are disabled
+    Position? position = await LocationHelper.updateCurrentLocation();
+    if (position != null && mounted) {
+      setState(() {
+        _currentPosition = position;
+      });
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Location services are disabled.")),
-      );
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("Location permission is permanently denied.")),
-        );
-        return;
-      }
-    }
-
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      if (mounted) {
-        setState(() {
-          _currentPosition = position;
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to get location: $e")),
+        const SnackBar(content: Text("Failed to get location")),
       );
     }
   }
@@ -73,7 +49,8 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
 
       appBar: AppBar(
         title: Text(widget.medData["name"] ?? "Medication Details"),
