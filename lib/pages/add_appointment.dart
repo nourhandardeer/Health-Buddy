@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:graduation_project/NavigationBar/manage_page.dart';
+import 'package:health_buddy/NavigationBar/manage_page.dart';
 import 'package:intl/intl.dart';
-import 'package:graduation_project/home.dart';
+import 'package:health_buddy/home.dart';
 import '../services/notification_service.dart';
 
 import '../services/firestore_service.dart';
@@ -130,19 +130,19 @@ class _AddAppointmentState extends State<AddAppointment> {
       );
 
       Navigator.pop(context);
-      } catch (e) {
+    } catch (e) {
       print("Error saving medication: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text('Error saving data: $e'),
             backgroundColor: Colors.red),
       );
-      } finally {
+    } finally {
       setState(() {
         _isLoading = false;
       });
-      }
     }
+  }
 
   Future<void> _loadDoctorSuggestions() async {
     final uid = _auth.currentUser?.uid;

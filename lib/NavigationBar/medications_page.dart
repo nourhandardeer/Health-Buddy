@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/AddMed/addmed.dart';
-import 'package:graduation_project/AddMed/medication_details_page.dart';
+import 'package:health_buddy/AddMed/addmed.dart';
+import 'package:health_buddy/AddMed/medication_details_page.dart';
 
 import '../services/firestore_service.dart';
 
@@ -21,7 +21,7 @@ class _MedicationsPageState extends State<MedicationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
       body: _buildMedicationsList(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -37,89 +37,90 @@ class _MedicationsPageState extends State<MedicationsPage> {
     );
   }
 
-    Widget _buildMedicationsList() {
-  final user = _auth.currentUser;
-  if (user == null) {
-    return const Center(
-      child: Text(
-        "Please log in to view medications.",
-        style: TextStyle(color: Colors.black),
-      ),
+  Widget _buildMedicationsList() {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return const Center(
+        child: Text(
+          "Please log in to view medications.",
+          style: TextStyle(color: Colors.black),
+        ),
+      );
+    }
+
+    return FutureBuilder<List<String>>(
+      future: _firestoreService.getEmergencyUserIds(user.uid),
+      builder: (context, userSnapshot) {
+        if (userSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (userSnapshot.hasError || !userSnapshot.hasData) {
+          return const Center(
+            child: Text("Error loading user data",
+                style: TextStyle(color: Colors.red)),
+          );
+        }
+
+        return FutureBuilder<QuerySnapshot>(
+          future: _firestoreService.getMedications(userSnapshot.data!),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return const Center(
+                child: Text("Error loading medications",
+                    style: TextStyle(color: Colors.red)),
+              );
+            }
+
+            List<QueryDocumentSnapshot> medications = snapshot.data!.docs;
+
+            if (medications.isEmpty) {
+              return _buildEmptyState();
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: medications.length,
+              itemBuilder: (context, index) {
+                var med = medications[index];
+                var medData = med.data() as Map<String, dynamic>;
+
+                return Card(
+                  color: Colors.grey[200],
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    leading:
+                        const Icon(Icons.medical_services, color: Colors.blue),
+                    title: Text(
+                      medData["name"] ?? "Unknown Medication",
+                      style: const TextStyle(color: Colors.black, fontSize: 18),
+                    ),
+                    subtitle: Text(
+                      " ${medData['frequency'] ?? 'Specific Days '}",
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              MedicationDetailsPage(medId: med.id),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
-
-  return FutureBuilder<List<String>>(
-    future:  _firestoreService.getEmergencyUserIds(user.uid),
-    builder: (context, userSnapshot) {
-      if (userSnapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (userSnapshot.hasError || !userSnapshot.hasData) {
-        return const Center(
-          child: Text("Error loading user data", style: TextStyle(color: Colors.red)),
-        );
-      }
-
-      return FutureBuilder<QuerySnapshot>(
-        future: _firestoreService.getMedications(userSnapshot.data!),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return const Center(
-              child: Text("Error loading medications", style: TextStyle(color: Colors.red)),
-            );
-          }
-
-          List<QueryDocumentSnapshot> medications = snapshot.data!.docs;
-
-          if (medications.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: medications.length,
-            itemBuilder: (context, index) {
-              var med = medications[index];
-              var medData = med.data() as Map<String, dynamic>;
-
-              return Card(
-                color: Colors.grey[200],
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  leading: const Icon(Icons.medical_services, color: Colors.blue),
-                  title: Text(
-                    medData["name"] ?? "Unknown Medication",
-                    style: const TextStyle(color: Colors.black, fontSize: 18),
-                  ),
-                  subtitle: Text(
-                    " ${medData['frequency'] ?? 'Specific Days ' }",
-                    style: TextStyle(color: Colors.grey[700]),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            MedicationDetailsPage(medId: med.id),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          );
-        },
-      );
-    },
-  );
-}
-
-
 
   Widget _buildEmptyState() {
     return Center(

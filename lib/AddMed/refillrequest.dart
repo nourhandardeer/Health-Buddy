@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/home.dart'; // Import Home Page
+import 'package:health_buddy/home.dart'; // Import Home Page
 
 class RefillRequest extends StatefulWidget {
   final String medicationName;
@@ -24,51 +24,57 @@ class RefillRequest extends StatefulWidget {
 
 class _RefillRequestState extends State<RefillRequest> {
   bool isReminderOn = false;
-  TextEditingController reminderController =
-      TextEditingController(text: "10 ");
-  TextEditingController currentInventory =
-      TextEditingController(text: "30 ");
+  TextEditingController reminderController = TextEditingController(text: "10 ");
+  TextEditingController currentInventory = TextEditingController(text: "30 ");
+
+  bool _isLoading = false;
 
   Future<void> saveRefillReminder() async {
-  try {
-    Map<String, dynamic> dataToUpdate = {};
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      Map<String, dynamic> dataToUpdate = {};
 
-    if (isReminderOn) {
-      final currentInventoryValue = int.tryParse(currentInventory.text.trim());
-      final remindMeWhenValue = int.tryParse(reminderController.text.trim());
+      if (isReminderOn) {
+        final currentInventoryValue =
+            int.tryParse(currentInventory.text.trim());
+        final remindMeWhenValue = int.tryParse(reminderController.text.trim());
 
-      if (currentInventoryValue != null) {
-        dataToUpdate['currentInventory'] = currentInventoryValue;
+        if (currentInventoryValue != null) {
+          dataToUpdate['currentInventory'] = currentInventoryValue;
+        }
+
+        if (remindMeWhenValue != null) {
+          dataToUpdate['remindMeWhen'] = remindMeWhenValue;
+        }
       }
 
-      if (remindMeWhenValue != null) {
-        dataToUpdate['remindMeWhen'] = remindMeWhenValue;
+      if (dataToUpdate.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('meds')
+            .doc(widget.documentId)
+            .update(dataToUpdate);
       }
-    }
 
-    if (dataToUpdate.isNotEmpty) {
-      await FirebaseFirestore.instance
-          .collection('meds')
-          .doc(widget.documentId)
-          .update(dataToUpdate);
-    }
-
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error saving refill reminder: $e'),
+            backgroundColor: Colors.red),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error saving refill reminder: $e'), backgroundColor: Colors.red),
-    );
   }
-}
-
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +146,8 @@ class _RefillRequestState extends State<RefillRequest> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "Current inventory",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -160,7 +167,8 @@ class _RefillRequestState extends State<RefillRequest> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       "Remind me when remaining",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -182,7 +190,7 @@ class _RefillRequestState extends State<RefillRequest> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: saveRefillReminder,
+                onPressed: _isLoading ? null : saveRefillReminder,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -190,10 +198,19 @@ class _RefillRequestState extends State<RefillRequest> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  "Save",
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : const Text(
+                        "Save",
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
               ),
             ),
           ],

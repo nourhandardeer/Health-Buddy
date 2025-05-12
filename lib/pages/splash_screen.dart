@@ -49,13 +49,13 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor:
-          Colors.brown.shade100, // Change background color if needed
+          const Color.fromARGB(255, 255, 255, 255), // Change background color if needed
       body: Center(
         child: AnimatedOpacity(
           duration: Duration(seconds: 2), // Smooth fade-in effect
           opacity: _opacity,
           child: Image.asset(
-            'images/logo.png',
+            'images/logo2.jpeg',
             width: 200,
             height: 200,
           ), // Logo image

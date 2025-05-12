@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/home.dart';
+import 'package:health_buddy/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:graduation_project/auth.dart';
-import 'package:graduation_project/pages/sign_up.dart';
+import 'package:health_buddy/auth.dart';
+import 'package:health_buddy/pages/sign_up.dart';
 
 class LoginScreen extends StatefulWidget {
   LoginScreen({super.key});
@@ -23,7 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
       await Auth().signInWithEmailAndPassword(
         email: emailController.text,
         password: passwordController.text,
-        phone: phoneController.text ,
       );
       Navigator.pushReplacement(
         context,
@@ -39,7 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _resetPassword() async {
     if (emailController.text.isNotEmpty) {
       try {
-        await FirebaseAuth.instance.sendPasswordResetEmail(email: emailController.text);
+        await FirebaseAuth.instance
+            .sendPasswordResetEmail(email: emailController.text);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Password reset link sent to your email")),
         );
@@ -70,7 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(fontSize: 19, color: Colors.blue.shade900)),
               Image.asset('images/logo.png', width: 200, height: 200),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -87,7 +88,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: TextField(
                   controller: passwordController,
                   obscureText: true,
@@ -95,22 +97,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Password',
                     labelStyle: TextStyle(fontSize: 18, color: Colors.black),
                     hintText: 'Enter your Password',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: TextField(
-                  controller: phoneController,
-                  decoration: InputDecoration(
-                    labelText: 'Phone Number',
-                    labelStyle: TextStyle(fontSize: 18, color: Colors.black),
-                    hintText: 'Enter your Phone Number',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -127,14 +113,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
-              TextButton(onPressed: _resetPassword,
-                child: Text("Forgot Password?", style: TextStyle(color: Colors.blue.shade900)),
+              TextButton(
+                onPressed: _resetPassword,
+                child: Text("Forgot Password?",
+                    style: TextStyle(color: Colors.blue.shade900)),
               ),
               ElevatedButton(
                 onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade900,
-                  padding: const EdgeInsets.symmetric(horizontal: 150, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 150, vertical: 5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -148,10 +137,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const SignUpScreen()),
                   );
                 },
-                child: Text("Don't have an account? Sign up", style: TextStyle(color: Colors.blue.shade900)),
+                child: Text("Don't have an account? Sign up",
+                    style: TextStyle(color: Colors.blue.shade900)),
               ),
             ],
           ),

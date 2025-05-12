@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/auth.dart';
-import 'package:graduation_project/pages/profile_setup.dart';
+import 'package:health_buddy/auth.dart';
+import 'package:health_buddy/pages/loggin.dart';
+import 'package:health_buddy/pages/profile_setup.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -13,16 +13,45 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
 
-
   String? errorMessage = '';
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter an email';
+    }
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,10}$').hasMatch(value)) {
+      return 'Please enter a valid email';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a password';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
+  }
 
   Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      errorMessage = '';
+    });
+
     try {
       String firstName = firstNameController.text.trim();
       String lastName = lastNameController.text.trim();
@@ -30,8 +59,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       String password = passwordController.text.trim();
       String phone = phoneController.text.trim();
 
-
-      // Firebase Auth - Create User
       String? errorMsg = await Auth().createUserWithEmailAndPassword(
         firstName: firstName,
         lastName: lastName,
@@ -39,27 +66,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: password,
         phone: phone,
       );
+
       if (errorMsg == null) {
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          // Save basic user details in Firestore
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-            'firstName': firstName,
-            'lastName': lastName,
-            'email': email,
-            'phone': phone,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-
-          // **Check if this email is listed as an emergency contact**
-          await checkAndLinkEmergencyContact(user);
-
-          // Navigate to Profile Setup Page
+          await checkAndLinkEmergencyContact(user); // optional if needed
           _onSignupSuccess(user.uid, firstName, lastName, phone);
-        } else {
-          setState(() {
-            errorMessage = "Signup failed. Please try again.";
-          });
         }
       } else {
         setState(() {
@@ -68,12 +80,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } catch (e) {
       setState(() {
-        errorMessage = "An unexpected error occurred. Please try again.";
+        errorMessage = "An unexpected error occurred.";
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }
 
-  void _onSignupSuccess(String userId, String firstName, String lastName, String phone) {
+  void _onSignupSuccess(
+      String userId, String firstName, String lastName, String phone) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -81,7 +98,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           userId: userId,
           firstName: firstName,
           lastName: lastName,
-          phone: phone ,
+          phone: phone,
         ),
       ),
     );
@@ -91,126 +108,184 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       DocumentSnapshot contactDoc = await FirebaseFirestore.instance
           .collection('emergencyContacts')
-          .doc(user.phoneNumber) // Check if the signed-up email exists
+          .doc(user.phoneNumber)
           .get();
 
       if (contactDoc.exists) {
         String patientId = contactDoc['linkedPatientId'];
-
-        // Update the emergency contact's Firestore document to store this link
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid) // The newly signed-up user's UID
-            .set({
-          'linkedPatientId': patientId, // Link this emergency contact to the patient
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'linkedPatientId': patientId,
         }, SetOptions(merge: true));
-
-        print("Emergency contact linked to patient successfully.");
       }
     } catch (e) {
-      print("Error checking emergency contact linkage: $e");
+      print("Error checking emergency contact linkage: \$e");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Create an Account', style: TextStyle(fontSize: 29, color: Colors.blue.shade900)),
-              Text('Sign Up', style: TextStyle(fontSize: 19, color: Colors.blue.shade900)),
-              Image.asset('images/logo.png', width: 200, height: 200),
-
-              // First Name Field
-              _buildTextField(firstNameController, 'First Name', 'Enter your first name'),
-
-              // Last Name Field
-              _buildTextField(lastNameController, 'Last Name', 'Enter your last name'),
-
-              // Email Field
-              _buildTextField(emailController, 'Email', 'Enter your email', isEmail: true),
-
-              // Password Field
-              _buildTextField(passwordController, 'Password', 'Enter your password', isPassword: true),
-              _buildTextField(phoneController, 'Phone', 'Enter your phone number', ),
-
-
-              // Error message
-              if (errorMessage != null && errorMessage!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.red),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Create an Account',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(
+                              color: Colors.blue.shade900,
+                              fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('Sign Up',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(color: Colors.blue.shade900)),
+                  const SizedBox(height: 16),
+                  Image.asset('images/logo2.jpeg', width: 200, height: 200),
+                  const SizedBox(height: 24),
+                  _buildTextFormField(
+                    firstNameController,
+                    'First Name',
+                    'Enter your first name',
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Required' : null,
                   ),
-                ),
-              const SizedBox(height: 10),
-
-              // Sign Up Button
-              ElevatedButton(
-                onPressed: _register,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.shade900,
-                  padding: const EdgeInsets.symmetric(horizontal: 120, vertical: 10),
-                  textStyle: const TextStyle(fontSize: 15, color: Colors.white),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  _buildTextFormField(
+                    lastNameController,
+                    'Last Name',
+                    'Enter your last name',
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Required' : null,
                   ),
-                ),
-                child: const Text("Sign Up", style: TextStyle(color: Colors.white)),
+                  _buildTextFormField(
+                    emailController,
+                    'Email',
+                    'Enter your email',
+                    validator: _validateEmail,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  _buildTextFormField(
+                    passwordController,
+                    'Password',
+                    'Enter your password',
+                    validator: _validatePassword,
+                    obscureText: _obscurePassword,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                  ),
+                  _buildTextFormField(
+                    phoneController,
+                    'Phone',
+                    'Enter your phone number',
+                    validator: (value) =>
+                        value?.isEmpty ?? true ? 'Required' : null,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  if (errorMessage != null && errorMessage!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _register,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade900,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              "Sign Up",
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.white),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+              // Navigate to Login Page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
+              },
+                    child: const Text(
+                      "Already have an account? Login",
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 10),
-
-              // Navigate to Login Screen
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text(
-                  "Already have an account? Login",
-                  style: TextStyle(fontSize: 16, color: Colors.blue),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, String hint, {bool isPassword = false, bool isEmail = false}) {
+  Widget _buildTextFormField(
+    TextEditingController controller,
+    String label,
+    String hint, {
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    bool obscureText = false,
+    Widget? suffixIcon,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: TextField(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
         controller: controller,
-        obscureText: isPassword,
-        keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        validator: validator,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(fontSize: 18, color: Colors.black),
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.grey, width: 2),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.grey, width: 1.5),
+          suffixIcon: suffixIcon,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.blue, width: 2.5),
-          ),
-          filled: true,
-          fillColor: Colors.white,
         ),
-        style: const TextStyle(fontSize: 18, color: Colors.black),
       ),
     );
   }

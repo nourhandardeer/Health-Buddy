@@ -2,13 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/services/firestore_service.dart';
+import 'package:health_buddy/services/firestore_service.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:graduation_project/NavigationBar/manage_page.dart';
-import 'package:graduation_project/NavigationBar/medications_page.dart';
-import 'package:graduation_project/NavigationBar/refills_page.dart';
-import 'package:graduation_project/pages/profile_page.dart';
-import 'package:graduation_project/pages/setting/settings_page.dart';
+import 'package:health_buddy/NavigationBar/manage_page.dart';
+import 'package:health_buddy/NavigationBar/medications_page.dart';
+import 'package:health_buddy/NavigationBar/refills_page.dart';
+import 'package:health_buddy/pages/profile_page.dart';
+import 'package:health_buddy/pages/setting/settings_page.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -94,9 +94,11 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return FutureBuilder<DocumentSnapshot>(
-      future:
-          FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const CircleAvatar(
@@ -117,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final profileImage = data['profileImage'] ?? '';
 
-        if (profileImage == null || profileImage.isEmpty || profileImage == 'images/user.png') {
+        if (profileImage.isEmpty || profileImage == 'images/user.png') {
           return const CircleAvatar(
             radius: 18,
             backgroundColor: Colors.transparent,

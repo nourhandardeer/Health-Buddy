@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:graduation_project/pages/loggin.dart';
-import 'package:graduation_project/pages/sign_up.dart';
+import 'package:health_buddy/pages/loggin.dart';
+import 'package:health_buddy/pages/sign_up.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -8,55 +8,63 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-       backgroundColor: Colors.brown.shade100,
-
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: Center(
-          // Center the entire column
+        // Center the entire column
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center, // Center vertically
           crossAxisAlignment: CrossAxisAlignment.center, // Center horizontally
           children: [
-            Image.asset('images/logo.png', width: 220, height: 220), // Logo
+            Image.asset('images/logo2.jpeg', width: 220, height: 220), // Logo
 
             SizedBox(height: 80), // Spacing
 
-          ElevatedButton(
-           onPressed: () {
-              // Navigate to Sign In Page
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SignUpScreen()),
-              );
-            },
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to Sign In Page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SignUpScreen()),
+                );
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade900, 
-                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5), 
-                textStyle: TextStyle(fontSize: 15, color: Colors.white), 
+                backgroundColor: Colors.blue.shade900,
+                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
+                textStyle: TextStyle(fontSize: 15, color: Colors.white),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12), 
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: Text("Sign Up",style: TextStyle(color:Colors.white ),),
+              child: Text(
+                "Sign Up",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-
 
             SizedBox(height: 20), // Spacing
 
             ElevatedButton(
               onPressed: () {
                 // Navigate to Login Page
-                Navigator.push(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => LoginScreen()));
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5), 
-                 textStyle: TextStyle(fontSize: 15,color: Colors.white), 
-                 shape: RoundedRectangleBorder(
-                 borderRadius: BorderRadius.circular(12), 
-                   ),
+                backgroundColor: const Color.fromARGB(255, 233, 93, 72),
+                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
+                textStyle: TextStyle(fontSize: 15, color: Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              
-              child: Text("Login",style: TextStyle(color: Colors.blue.shade900),),
+              child: Text("Login",
+                  style: TextStyle(
+                    color: const Color.fromARGB(255, 255, 255, 255),
+                    fontWeight: FontWeight.bold,
+                  )),
             ),
           ],
         ),

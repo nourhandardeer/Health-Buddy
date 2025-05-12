@@ -53,16 +53,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  bool _isLoading = false;
+
   Future<void> pickAndUploadProfileImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    setState(() {
+    _isLoading = true;
+  });
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile == null) return;
+  if (pickedFile == null) {
+    setState(() {
+      _isLoading = false;
+    });
+    return;
+  }  // User didn't pick an image
 
-    final file = File(pickedFile.path);
-    final cloudinaryUrl =
-        Uri.parse("https://api.cloudinary.com/v1_1/defwfev8k/image/upload");
+  final file = File(pickedFile.path);
+  final cloudinaryUrl = Uri.parse("https://api.cloudinary.com/v1_1/defwfev8k/image/upload");
 
+  try {
+    // Create a multipart request to upload the image
     final request = http.MultipartRequest('POST', cloudinaryUrl)
       ..fields['upload_preset'] = 'Health_Buddy'
       ..files.add(await http.MultipartFile.fromPath('file', file.path));
@@ -74,20 +85,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final jsonResponse = json.decode(resStr);
       final imageUrl = jsonResponse['secure_url'];
 
+      // Update the profile image URL in Firestore
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
           'profileImage': imageUrl,
         });
-        print(imageUrl);
+
+        // Update the local state with the new image URL
+        setState(() {
+          _profileImageUrl = imageUrl;
+          _isLoading = false;
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Profile image updated successfully!")),
+        );
       }
     } else {
       throw Exception("Failed to upload image");
     }
+  } catch (e) {
+    // Handle any errors during the upload process
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error uploading image: $e")),
+    );
   }
+}
+
 
   // Update user details in Firestore (UID remains unchanged)
   Future<void> _updateProfile() async {
@@ -124,7 +150,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               children: [
                 GestureDetector(
                   onTap: pickAndUploadProfileImage,
-                  child: CircleAvatar(
+                  child: _isLoading
+                  ? CircularProgressIndicator()
+                  : CircleAvatar(
                     key: ValueKey(_profileImageUrl),
                     radius: 60,
                     backgroundImage: _profileImageUrl.startsWith('http')

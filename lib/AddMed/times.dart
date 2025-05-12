@@ -10,7 +10,6 @@ class TimesPage extends StatefulWidget {
   final String startDate;
   final String dosage;
 
-
   const TimesPage({
     Key? key,
     required this.medicationName,
@@ -28,7 +27,6 @@ class _TimesPageState extends State<TimesPage> {
   String? selectedFrequency;
   bool showOtherOptions = false;
 
-
   final List<String> frequencyOptions = [
     "Once a day",
     "Twice a day",
@@ -36,10 +34,9 @@ class _TimesPageState extends State<TimesPage> {
     "Once a week",
     "Specific days of the week",
     "Only as needed",
-
   ];
 
-
+  bool _isLoading = false;
 
   Future<void> saveFrequency() async {
     if (selectedFrequency == null) {
@@ -48,6 +45,9 @@ class _TimesPageState extends State<TimesPage> {
       );
       return;
     }
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       await FirebaseFirestore.instance
@@ -57,7 +57,7 @@ class _TimesPageState extends State<TimesPage> {
         'frequency': selectedFrequency,
         'isAsNeeded': selectedFrequency == "Only as needed",
         'timestamp': FieldValue.serverTimestamp(),
-        'startDate':'Saturday',
+        'startDate': 'Saturday',
       });
 
       if (mounted) {
@@ -72,7 +72,6 @@ class _TimesPageState extends State<TimesPage> {
                 selectedFrequency: selectedFrequency!,
                 reminderTime: "As Needed",
                 documentId: widget.documentId,
-                
               ),
             ),
           );
@@ -105,7 +104,6 @@ class _TimesPageState extends State<TimesPage> {
                 selectedFrequency: selectedFrequency!,
                 documentId: widget.documentId,
                 dosage: widget.dosage,
-                
               ),
             ),
           );
@@ -115,6 +113,10 @@ class _TimesPageState extends State<TimesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving frequency: $e')),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -131,7 +133,8 @@ class _TimesPageState extends State<TimesPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text("Select Frequency", style: TextStyle(color: Colors.black)),
+        title: const Text("Select Frequency",
+            style: TextStyle(color: Colors.black)),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Padding(
@@ -164,12 +167,12 @@ class _TimesPageState extends State<TimesPage> {
                       },
                     );
                   }).toList(),
-
                   if (showOtherOptions) ...[
                     const Divider(),
                     const Text(
                       "Other Options",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
                     // ...otherOptions.map((option) {
@@ -196,21 +199,20 @@ class _TimesPageState extends State<TimesPage> {
                     //         );
                     //       }
 
-                          // Specific days of the week ➡ يروح مباشرة على DatePage
-                          // else if (option == "Specific days of the week") {
-                          //   Navigator.push(
-                          //     context,
-                          //     MaterialPageRoute(
-                          //       builder: (context) => DatePage(
-                          //         medicationName: widget.medicationName,
-                          //         selectedUnit: widget.selectedUnit,
-                          //         selectedFrequency: option,
-                          //         documentId: widget.documentId,
-                          //       ),
-                          //     ),
-                          //   );
-                          // }
-
+                    // Specific days of the week ➡ يروح مباشرة على DatePage
+                    // else if (option == "Specific days of the week") {
+                    //   Navigator.push(
+                    //     context,
+                    //     MaterialPageRoute(
+                    //       builder: (context) => DatePage(
+                    //         medicationName: widget.medicationName,
+                    //         selectedUnit: widget.selectedUnit,
+                    //         selectedFrequency: option,
+                    //         documentId: widget.documentId,
+                    //       ),
+                    //     ),
+                    //   );
+                    // }
 
                     //       else {
                     //         setState(() {
@@ -231,7 +233,11 @@ class _TimesPageState extends State<TimesPage> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
-          onPressed: selectedFrequency != null ? saveFrequency : null,
+          onPressed: _isLoading
+              ? null
+              : selectedFrequency != null
+                  ? saveFrequency
+                  : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -239,10 +245,19 @@ class _TimesPageState extends State<TimesPage> {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          child: const Text(
-            "Next",
-            style: TextStyle(fontSize: 18, color: Colors.white),
-          ),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : const Text(
+                  "Next",
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
         ),
       ),
     );

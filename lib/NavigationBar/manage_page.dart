@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:graduation_project/pages/add_appointment.dart';
-import 'package:graduation_project/pages/add_doctor.dart';
+import 'package:health_buddy/pages/add_appointment.dart';
+import 'package:health_buddy/pages/add_doctor.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../services/firestore_service.dart';
@@ -228,7 +228,7 @@ class ManagePage extends StatelessWidget {
     );
   }
 
-   void _showBottomSheet(BuildContext context) {
+  void _showBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -252,22 +252,24 @@ class ManagePage extends StatelessWidget {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AddAppointment()),
+                    MaterialPageRoute(
+                        builder: (context) => const AddAppointment()),
                   );
                 },
               ),
               ListTile(
-                leading: const Icon(FontAwesomeIcons.userDoctor, ),
+                leading: const Icon(
+                  FontAwesomeIcons.userDoctor,
+                ),
                 title: const Text('Add Doctor'),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) =>  AddDoctor()),
+                    MaterialPageRoute(builder: (context) => AddDoctor()),
                   );
                 },
               ),
-              
               const SizedBox(height: 16),
               TextButton(
                 style: TextButton.styleFrom(
@@ -277,7 +279,8 @@ class ManagePage extends StatelessWidget {
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                child: const Text('Cancel', style: TextStyle(color: Colors.black, fontSize: 18)),
+                child: const Text('Cancel',
+                    style: TextStyle(color: Colors.black, fontSize: 18)),
               ),
             ],
           ),

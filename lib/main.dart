@@ -3,23 +3,22 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:graduation_project/services/MedicineDatabaseHelper.dart';
+import 'package:health_buddy/services/MedicineDatabaseHelper.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:graduation_project/pages/splash_screen.dart';
-import 'package:graduation_project/home.dart';
-import 'package:graduation_project/services/notification_service.dart';
-import 'package:graduation_project/services/theme_provider.dart';
-import 'package:graduation_project/pages/setting/PinVerificationPage.dart'; // Import the PIN verification page
+import 'package:health_buddy/pages/splash_screen.dart';
+import 'package:health_buddy/home.dart';
+import 'package:health_buddy/services/notification_service.dart';
+import 'package:health_buddy/services/theme_provider.dart';
+import 'package:health_buddy/pages/setting/PinVerificationPage.dart'; // Import the PIN verification page
 import 'package:cloudinary_url_gen/cloudinary.dart';
 import 'package:cloudinary_flutter/image/cld_image.dart';
 import 'package:cloudinary_flutter/cloudinary_context.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-   try {
+  try {
     await Firebase.initializeApp(
       options: kIsWeb
           ? const FirebaseOptions(
@@ -55,8 +54,6 @@ void main() async {
   );
 }
 
-
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -68,26 +65,26 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       builder: DevicePreview.appBuilder,
       themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      
+
       theme: ThemeData(
         brightness: Brightness.light,
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.black), 
+          bodyLarge: TextStyle(color: Colors.black),
           bodyMedium: TextStyle(color: Colors.black87),
-          titleLarge: TextStyle(color: Colors.black), 
+          titleLarge: TextStyle(color: Colors.black),
         ),
         colorScheme: const ColorScheme.light(
           background: Colors.white,
           onBackground: Colors.black,
         ),
       ),
-      
+
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white), 
+          bodyLarge: TextStyle(color: Colors.white),
           bodyMedium: TextStyle(color: Colors.white70),
-          titleLarge: TextStyle(color: Colors.white), 
+          titleLarge: TextStyle(color: Colors.white),
         ),
         colorScheme: const ColorScheme.dark(
           background: Colors.black,
@@ -105,11 +102,11 @@ class AuthCheck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>( 
+    return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SplashScreen(); 
+          return const SplashScreen();
         }
 
         // Check if the PIN is set before navigating to HomeScreen
@@ -122,7 +119,7 @@ class AuthCheck extends StatelessWidget {
 
             if (pinSnapshot.hasData && pinSnapshot.data == true) {
               // Show PIN verification page if the PIN is set
-              return  PinVerificationPage();
+              return PinVerificationPage();
             }
 
             // If no PIN is set, navigate directly to the home screen

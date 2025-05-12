@@ -1,4 +1,4 @@
-name: graduation_project
+name: health_buddy
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -9,6 +9,8 @@ environment:
 
 dependencies:
   # device_preview: ^1.2.0
+  
+  
 
   flutter:
     sdk: flutter
@@ -43,12 +45,15 @@ dependencies:
   cloudinary_flutter: ^1.0.0
   cloudinary_url_gen: ^1.0.0
 
+  
+
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -57,10 +62,20 @@ flutter:
     - images/photo3.png
     - images/drugs.png
     - images/logo.png
+    - images/logo2.jpeg
     - images/syringe.png
     - images/user.png
     - assets/
+    - assets/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "images/logo2.jpeg"
+
     #  - assets/sounds/notification_sound.mp3
+
+    
 
 
   #   - images/a_dot_ham.jpeg

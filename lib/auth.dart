@@ -42,7 +42,7 @@ class Auth {
   Future<UserCredential> signInWithEmailAndPassword({
     required String email,
     required String password,
-    required String phone,
+
   }) async {
     UserCredential userCredential =
         await _firebaseAuth.signInWithEmailAndPassword(

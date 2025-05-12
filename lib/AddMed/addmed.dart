@@ -14,7 +14,7 @@ class AddMedicationPage extends StatefulWidget {
 class _AddMedicationPageState extends State<AddMedicationPage> {
   final TextEditingController medicationController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
- // final MedicationService medicationService = MedicationService();
+  // final MedicationService medicationService = MedicationService();
   List<String> medicationSuggestions = [];
   final _databaseHelper = MedicineDatabaseHelper.instance;
   List<String> _suggestions = [];
@@ -23,15 +23,34 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
   String? tempDocId;
 
   final List<String> units = [
-    "Pills", "Ampoules", "Tablets", "Capsules", "IU", "Application", "Drop",
-    "Gram", "Injection", "Milligram", "Milliliter", "MM", "Packet", "Pessary",
-    "Piece", "Portion", "Puff", "Spray", "Suppository", "Teaspoon",
-    "Vaginal Capsule", "Vaginal Suppository", "Vaginal Tablet", "MG"
+    "Pills",
+    "Ampoules",
+    "Tablets",
+    "Capsules",
+    "IU",
+    "Application",
+    "Drop",
+    "Gram",
+    "Injection",
+    "Milligram",
+    "Milliliter",
+    "MM",
+    "Packet",
+    "Pessary",
+    "Piece",
+    "Portion",
+    "Puff",
+    "Spray",
+    "Suppository",
+    "Teaspoon",
+    "Vaginal Capsule",
+    "Vaginal Suppository",
+    "Vaginal Tablet",
+    "MG"
   ];
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Future<Database> _databaseInitFuture;
-
 
   @override
   void initState() {
@@ -74,21 +93,25 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
     print("🔍 Results found: ${_suggestions.length}");
   }
 
-
-
+  bool _isLoading = false;
 
   Future<void> _saveMedicationData() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('User not logged in'), backgroundColor: Colors.red),
       );
       return;
     }
     String uid = user.uid;
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       String? phoneNumber = userDoc['phone'];
       if (phoneNumber == null) return;
 
@@ -108,13 +131,20 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
         _navigateToTimesPage(docId);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error saving data'), backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Error saving data'), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving data: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Error saving data: $e'),
+            backgroundColor: Colors.red),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -142,8 +172,9 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
-),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -160,21 +191,26 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                   return const Iterable<String>.empty();
                 }
                 await _getOfflineSuggestions(textEditingValue.text);
-                print("_suggestions list after fetching for '${textEditingValue.text}': $_suggestions");
+                print(
+                    "_suggestions list after fetching for '${textEditingValue.text}': $_suggestions");
                 return _suggestions.where((name) {
-                  return name.toLowerCase().startsWith(textEditingValue.text.toLowerCase());
+                  return name
+                      .toLowerCase()
+                      .startsWith(textEditingValue.text.toLowerCase());
                 });
               },
               onSelected: (String selection) {
                 medicationController.text = selection;
               },
-              fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+              fieldViewBuilder:
+                  (context, controller, focusNode, onEditingComplete) {
                 return TextField(
                   controller: controller,
                   focusNode: focusNode,
                   decoration: InputDecoration(
                     labelText: "Medication Name",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onChanged: (text) {
                     if (text.isNotEmpty) _getOfflineSuggestions(text);
@@ -182,7 +218,9 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                   onEditingComplete: onEditingComplete,
                 );
               },
-              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+              optionsViewBuilder: (BuildContext context,
+                  AutocompleteOnSelected<String> onSelected,
+                  Iterable<String> options) {
                 if (options.isEmpty) {
                   return const SizedBox.shrink();
                 }
@@ -203,7 +241,8 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                               onSelected(option);
                             },
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 12.0),
                               child: Text(option),
                             ),
                           );
@@ -214,9 +253,7 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
                 );
               },
             ),
-
-
-          const SizedBox(height: 30),
+            const SizedBox(height: 30),
             const Text(
               "Select Unit",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -224,13 +261,16 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               value: selectedUnit,
               hint: const Text("Choose a unit"),
               items: units
-                  .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
+                  .map((unit) =>
+                      DropdownMenuItem(value: unit, child: Text(unit)))
                   .toList(),
               onChanged: (value) => setState(() => selectedUnit = value),
             ),
@@ -243,24 +283,20 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  onPressed: dosage > 1
-                      ? () => setState(() => dosage--)
-                      : null,
-                  icon: const Icon(Icons.remove_circle, color: Colors.red, size: 30),
+                  onPressed: dosage > 1 ? () => setState(() => dosage--) : null,
+                  icon: const Icon(Icons.remove_circle,
+                      color: Colors.red, size: 30),
                 ),
-
-
                 Text(
                   "$dosage ${selectedUnit ?? ''}",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-
-
                 IconButton(
-                  onPressed: dosage < 10
-                      ? () => setState(() => dosage++)
-                      : null,
-                  icon: const Icon(Icons.add_circle, color: Colors.green, size: 30),
+                  onPressed:
+                      dosage < 10 ? () => setState(() => dosage++) : null,
+                  icon: const Icon(Icons.add_circle,
+                      color: Colors.green, size: 30),
                 ),
               ],
             ),
@@ -272,22 +308,32 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
         child: ElevatedButton(
           onPressed: () {
             if (medicationController.text.isNotEmpty && selectedUnit != null) {
-              _saveMedicationData();
-             // _navigateToTimesPage(docId)
+              _isLoading ? null : _saveMedicationData();
+              // _navigateToTimesPage(docId)
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Please enter a medication name and select a unit'),
+                  content:
+                      Text('Please enter a medication name and select a unit'),
                   backgroundColor: Colors.red,
                 ),
               );
             }
           },
           style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-          child: const Text(
-            "Next",
-            style: TextStyle(fontSize: 18, color: Colors.white),
-          ),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : const Text(
+                  "Next",
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
         ),
       ),
     );

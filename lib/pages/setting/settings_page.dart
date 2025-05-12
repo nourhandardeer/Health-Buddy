@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:graduation_project/pages/EditProfilePage.dart';
-import 'package:graduation_project/pages/loggin.dart';
-import 'package:graduation_project/pages/splash_screen.dart';
-import 'package:graduation_project/pages/EmergencyContactPage.dart';
-import 'package:graduation_project/services/theme_provider.dart';
+import 'package:health_buddy/pages/EditProfilePage.dart';
+import 'package:health_buddy/pages/loggin.dart';
+import 'package:health_buddy/pages/splash_screen.dart';
+import 'package:health_buddy/pages/EmergencyContactPage.dart';
+import 'package:health_buddy/services/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'ChangePasswordPage.dart'; // Import the ChangePasswordPage
 import 'SetPinPage.dart'; // Import the SetPinPage (you can create this page for setting the PIN)

@@ -1,24 +1,26 @@
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/home.dart';
+import 'package:health_buddy/home.dart';
+import 'package:http/http.dart' as http;
 
 import '../EmergencyContactHelper.dart';
-
 
 class ProfileSetupPage extends StatefulWidget {
   final String userId;
   final String firstName;
   final String lastName;
   final String phone;
+
   const ProfileSetupPage({
     super.key,
     required this.userId,
     required this.firstName,
     required this.lastName,
-    required this.phone
+    required this.phone,
   });
 
   @override
@@ -26,7 +28,8 @@ class ProfileSetupPage extends StatefulWidget {
 }
 
 class _ProfileSetupPageState extends State<ProfileSetupPage> {
-  File? _profileImage;
+  File? _profileImageFile;
+  String? _uploadedImageUrl;
   final ImagePicker _picker = ImagePicker();
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
@@ -43,42 +46,100 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     _phone = TextEditingController(text: widget.phone);
   }
 
+  bool _isUploadingImage = false;
+
+  Future<void> pickAndUploadProfileImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile == null) return;
+
+    setState(() {
+      _profileImageFile = File(pickedFile.path);
+      _isUploadingImage = true;
+    });
+
+    final cloudinaryUrl =
+        Uri.parse("https://api.cloudinary.com/v1_1/defwfev8k/image/upload");
+
+    final request = http.MultipartRequest('POST', cloudinaryUrl)
+      ..fields['upload_preset'] = 'Health_Buddy'
+      ..files.add(
+          await http.MultipartFile.fromPath('file', _profileImageFile!.path));
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print("User not logged in");
+      return;
+    }
+
+    final response = await request.send();
+
+    if (response.statusCode == 200) {
+      final resStr = await response.stream.bytesToString();
+      final jsonResponse = json.decode(resStr);
+      final imageUrl = jsonResponse['secure_url'];
+
+      if (!mounted) return;
+
+      setState(() {
+        _uploadedImageUrl = imageUrl;
+        _isUploadingImage = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Image uploaded successfully!")),
+      );
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'profileImage': imageUrl,
+        });
+      }
+    } else {
+      final resStr = await response.stream.bytesToString();
+      print("Image upload failed: $resStr");
+      setState(() {
+        _isUploadingImage = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to upload image")),
+      );
+    }
+  }
+
   void _saveProfile() async {
     try {
       FirebaseFirestore firestore = FirebaseFirestore.instance;
-      String userId = widget.userId; // Get user ID
+      String userId = widget.userId;
 
-      User? user = FirebaseAuth.instance.currentUser; // Get logged-in user
+      User? user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User not logged in!')),
         );
         return;
       }
-      String defaultProfileImage = "images/user.png";
 
       await firestore.collection('users').doc(userId).set({
-        'email': user.email, // Save email
+        'email': user.email,
         'firstName': _firstNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
-        'profileImage': _profileImage != null
-            ? _profileImage!.path
-            : defaultProfileImage, // Store image path or empty
+        'profileImage': _uploadedImageUrl ?? "images/user.png",
         'age': _ageController.text.trim(),
         'illnesses': _illnessesController.text.trim(),
-        'emergencyContacts': emergencyContacts,
-        'phone': _phone.text.trim(),// Store list of contacts
+        'phone': _phone.text.trim(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile saved successfully!')),
       );
 
-      // Navigate to Home Screen
-      Navigator.pushReplacement(context,
-        MaterialPageRoute(
-            builder: (context) =>
-                HomeScreen()),
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen()),
       );
     } catch (error) {
       print("Error saving profile: $error");
@@ -89,41 +150,26 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final XFile? pickedFile =
-        await _picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile == null) {
-      print("No image selected.");
-      return; // Stop execution if no image was picked
-    }
-
-    setState(() {
-      _profileImage = File(pickedFile.path);
-    });
-  }
-
   void _addEmergencyContact() {
     EmergencyContactHelper.EmergencyContactDialog(context, (newContact) async {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
       try {
-        // Store contact under the patient's emergencyContacts collection
-        DocumentReference ref = await FirebaseFirestore.instance
+        await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .collection('emergencyContacts')
             .add(newContact);
 
-        // Also store a reference under emergencyContacts collection (for lookup)
         await FirebaseFirestore.instance
             .collection('emergencyContacts')
-            .doc(newContact["phone"]) // Using email as the document ID
+            .doc(newContact["phone"])
             .set({
           ...newContact,
-          'linkedPatientId': user.uid, // Link this contact to the patient
+          'linkedPatientId': user.uid,
         });
+        if (!mounted) return;
 
         setState(() {
           emergencyContacts.add(newContact);
@@ -136,9 +182,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final profileImage = _uploadedImageUrl != null
+        ? NetworkImage(_uploadedImageUrl!)
+        : AssetImage("images/user.png") as ImageProvider;
+
     return Scaffold(
       appBar: AppBar(title: Text("Profile Setup")),
       body: Padding(
@@ -146,26 +195,28 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         child: Column(
           children: [
             GestureDetector(
-              onTap: _pickImage,
-              child: CircleAvatar(
-                radius: 50,
-                backgroundImage: _profileImage != null
-                    ? FileImage(_profileImage!) as ImageProvider
-                    : AssetImage("images/user.png"), // Default profile pic
-                child: _profileImage == null
-                    ? Icon(Icons.camera_alt, size: 40, color: Colors.white)
-                    : null,
-              ),
+              onTap: pickAndUploadProfileImage,
+              child: _isUploadingImage
+                  ? CircularProgressIndicator()
+                  : CircleAvatar(
+                      radius: 60,
+                      backgroundImage: profileImage,
+                      backgroundColor: Colors.transparent,
+                    ),
             ),
+            SizedBox(height: 8),
+            Text("Tap image to upload"),
             SizedBox(height: 20),
             TextField(
-                controller: _ageController,
-                decoration: InputDecoration(labelText: "Age"),
-                keyboardType: TextInputType.number),
+              controller: _ageController,
+              decoration: InputDecoration(labelText: "Age"),
+              keyboardType: TextInputType.number,
+            ),
             TextField(
-                controller: _illnessesController,
-                decoration: InputDecoration(labelText: "Illnesses"),
-                maxLines: 3),
+              controller: _illnessesController,
+              decoration: InputDecoration(labelText: "Illnesses"),
+              maxLines: 3,
+            ),
             SizedBox(height: 20),
             Text("Emergency Contacts",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -175,8 +226,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 itemBuilder: (context, index) {
                   return ListTile(
                     title: Text(emergencyContacts[index]["name"]!),
-                    subtitle: Text(
-                        "${emergencyContacts[index]["relation"]!} - ${emergencyContacts[index]["phone"]!}"),
+                    subtitle: Text(" ${emergencyContacts[index]["phone"]!}"),
                     trailing: IconButton(
                       icon: Icon(Icons.delete, color: Colors.red),
                       onPressed: () {

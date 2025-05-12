@@ -1,4 +1,4 @@
-# graduation_project
+# health_buddy
 
 A new Flutter project.
 

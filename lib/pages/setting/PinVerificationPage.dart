@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:graduation_project/NavigationBar/home_page.dart';
-import 'package:graduation_project/home.dart';
+import 'package:health_buddy/NavigationBar/home_page.dart';
+import 'package:health_buddy/home.dart';
 
 class PinVerificationPage extends StatefulWidget {
   @override

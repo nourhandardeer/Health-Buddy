@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:graduation_project/services/notification_service.dart';
+import 'package:health_buddy/services/notification_service.dart';
 import 'refillrequest.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -96,7 +96,12 @@ class _DatePageState extends State<DatePage> {
     return [];
   }
 
+  bool _isLoading = false;
+
   Future<void> saveSelection() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
       Map<String, dynamic> dataToSave = {
         'timestamp': FieldValue.serverTimestamp()
@@ -154,14 +159,14 @@ class _DatePageState extends State<DatePage> {
         dataToSave['reminderTime1'] = "12:00 AM"; // default value
       } else if (isSpecificDays) {
         if (selectedDays.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one day!')),
-        );
-        return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select at least one day!')),
+          );
+          return;
         }
         dataToSave['specificDays'] = selectedDays.toList();
         dataToSave['reminderTime1'] = "12:00 AM"; // default value
-        } else if (recurringType.isNotEmpty) {
+      } else if (recurringType.isNotEmpty) {
         dataToSave['recurringFrequency'] =
             "Every $recurringValue $recurringType";
         dataToSave['recurringValue'] = recurringValue;
@@ -189,6 +194,10 @@ class _DatePageState extends State<DatePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving: $e')),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -375,15 +384,24 @@ class _DatePageState extends State<DatePage> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
-          onPressed: saveSelection,
+          onPressed: _isLoading ? null : saveSelection,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text("Next",
-              style: TextStyle(fontSize: 18, color: Colors.white)),
+          child: _isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : const Text("Next",
+                  style: TextStyle(fontSize: 18, color: Colors.white)),
         ),
       ),
     );
