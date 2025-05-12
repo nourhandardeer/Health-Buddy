@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import '../services/UpdateCurrentUserLocation.dart';
 import '../services/firestore_service.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -25,6 +25,8 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _fetchUserProfile();
+      updateCurrentUserLocation();
+
     _checkIfEmergencyContact();
   }
 

@@ -1,10 +1,33 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 class FirestoreService {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  Future<void> updatePatientLocation() async {
+    User? user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      await firestore.collection('users').doc(user.uid).update({
+        'location': {
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'timestamp': FieldValue.serverTimestamp(),
+        }
+      });
+
+      print("Patient location updated.");
+    } catch (e) {
+      print("Error updating location: $e");
+    }
+  }
 
   Future<String?> saveData({
     required String collection,
@@ -14,7 +37,8 @@ class FirestoreService {
     User? user = _auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('User not logged in'), backgroundColor: Colors.red),
       );
       return null;
     }
@@ -33,16 +57,15 @@ class FirestoreService {
       });
 
       return docRef.id;
-
     } catch (e) {
       print("Error saving data: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error saving data'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Error saving data'), backgroundColor: Colors.red),
       );
       return null;
     }
   }
-
 
   Future<String?> getOriginalPatientId(String emergencyContactPhone) async {
     try {
@@ -65,7 +88,8 @@ class FirestoreService {
     if (user == null) return [];
 
     String currentUserId = user.uid;
-    DocumentSnapshot userDoc = await firestore.collection('users').doc(currentUserId).get();
+    DocumentSnapshot userDoc =
+        await firestore.collection('users').doc(currentUserId).get();
     String? phoneNumber = userDoc['phone'];
 
     if (phoneNumber == null || phoneNumber.isEmpty) {
@@ -75,7 +99,8 @@ class FirestoreService {
 
     String? linkedPatientId = await getOriginalPatientId(phoneNumber);
     if (linkedPatientId != null) {
-      print("DEBUG: User is an emergency contact. Linked patient -> $linkedPatientId");
+      print(
+          "DEBUG: User is an emergency contact. Linked patient -> $linkedPatientId");
       return [linkedPatientId, currentUserId];
     }
 
@@ -110,12 +135,14 @@ class FirestoreService {
     }
     return emergencyContactUserIds;
   }
+
   Future<QuerySnapshot> getMedications(List<String> linkedUserIds) {
     return firestore
         .collection('meds')
         .where('linkedUserIds', arrayContainsAny: linkedUserIds)
         .get();
   }
+
   Stream<QuerySnapshot> getAppointmentsStream(List<String> linkedUserIds) {
     if (linkedUserIds.isEmpty) {
       print("DEBUG: No linked users found. Skipping database query.");
@@ -133,5 +160,4 @@ class FirestoreService {
 
     return Stream.fromIterable(streams).asyncExpand((event) => event);
   }
-
 }
