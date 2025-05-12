@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/locationHelper.dart'; // تأكدي من المسار هنا
 
 class RefillDetailsPage extends StatefulWidget {
   final Map<String, dynamic> medData;
@@ -22,39 +23,16 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
     _getCurrentLocation();
   }
 
+  /// Get Current Location and Update Firestore
   Future<void> _getCurrentLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+    Position? position = await LocationHelper.updateCurrentLocation();
+    if (position != null && mounted) {
+      setState(() {
+        _currentPosition = position;
+      });
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Location services are disabled.")),
-      );
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Location permission is permanently denied.")),
-        );
-        return;
-      }
-    }
-
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      if (mounted) {
-        setState(() {
-          _currentPosition = position;
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to get location: $e")),
+        const SnackBar(content: Text("Failed to get location")),
       );
     }
   }
@@ -71,17 +49,9 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Safely parse currentInventory to avoid type errors
-    int inventory = 0;
-    var rawInventory = widget.medData["currentInventory"];
-    if (rawInventory is String) {
-      inventory = int.tryParse(rawInventory) ?? 0;
-    } else if (rawInventory is num) {
-      inventory = rawInventory.toInt();
-    }
-
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+
       appBar: AppBar(
         title: Text(widget.medData["name"] ?? "Medication Details"),
       ),
@@ -97,7 +67,8 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
             Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -108,16 +79,13 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                     _buildDetailRow(Icons.format_list_numbered, "Dosage",
                         widget.medData["dosage"] ?? "Not specified"),
                     _buildDetailRow(Icons.inventory, "Current Inventory",
-                        "$inventory ${widget.medData["unit"] ?? ""}"),
+                        "${widget.medData["currentInventory"] ?? "0"} ${widget.medData["unit"] ?? ""}"),
                     _buildDetailRow(Icons.access_time, "Reminder Time",
-                        widget.medData["reminderTime1"] ?? "Not set"),
-                    // _buildDetailRow(Icons.date_range, "Next Refill Date",
-                    //     widget.medData["nextRefillDate"] ?? "Not available"),
-                    _buildDetailRow(Icons.date_range, "Reminder To Refill When",
-                       "${(widget.medData["remindMeWhen"] as num?)?.toStringAsFixed(0) ?? "0"} ${widget.medData["unit"] ?? ""}",
-                     ),
-                    // _buildDetailRow(Icons.person, "Doctor’s Notes",
-                    //     widget.medData["doctorNotes"] ?? "No notes available"),
+                        widget.medData["reminderTime"] ?? "Not set"),
+                    _buildDetailRow(Icons.date_range, "Next Refill Date",
+                        widget.medData["nextRefillDate"] ?? "Not available"),
+                    _buildDetailRow(Icons.person, "Doctor’s Notes",
+                        widget.medData["doctorNotes"] ?? "No notes available"),
                   ],
                 ),
               ),
@@ -125,43 +93,48 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
 
             const SizedBox(height: 20),
 
+            // Pharmacy Locator Section
             const Text(
               "Find a Nearby Pharmacy",
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
 
+            // Google Map Preview
             _currentPosition == null
                 ? const Center(child: CircularProgressIndicator())
                 : SizedBox(
-              height: 200,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                    zoom: 14,
-                  ),
-                  markers: {
-                    Marker(
-                      markerId: const MarkerId("userLocation"),
-                      position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                      infoWindow: const InfoWindow(title: "You are here"),
+                    height: 200,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: LatLng(_currentPosition!.latitude,
+                              _currentPosition!.longitude),
+                          zoom: 14,
+                        ),
+                        markers: {
+                          Marker(
+                            markerId: const MarkerId("userLocation"),
+                            position: LatLng(_currentPosition!.latitude,
+                                _currentPosition!.longitude),
+                            infoWindow: const InfoWindow(title: "You are here"),
+                          ),
+                        },
+                        onMapCreated: (GoogleMapController controller) {
+                          if (mounted) {
+                            setState(() {
+                              _mapController = controller;
+                            });
+                          }
+                        },
+                      ),
                     ),
-                  },
-                  onMapCreated: (GoogleMapController controller) {
-                    if (mounted) {
-                      setState(() {
-                        _mapController = controller;
-                      });
-                    }
-                  },
-                ),
-              ),
-            ),
+                  ),
 
             const SizedBox(height: 20),
 
+            // Buttons Section
             Row(
               children: [
                 Expanded(
@@ -169,9 +142,8 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                     icon: const Icon(Icons.map),
                     label: const Text("Open Google Maps"),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
-                      backgroundColor: Colors.blue,
-                    ),
+                        padding: const EdgeInsets.all(16),
+                        backgroundColor: Colors.blue),
                     onPressed: _openGoogleMaps,
                   ),
                 ),
@@ -181,9 +153,8 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                     icon: const Icon(Icons.local_pharmacy),
                     label: const Text("Find a Pharmacy"),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
-                      backgroundColor: Colors.green,
-                    ),
+                        padding: const EdgeInsets.all(16),
+                        backgroundColor: Colors.green),
                     onPressed: _openGoogleMaps,
                   ),
                 ),
@@ -208,7 +179,7 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
           ),
           Expanded(
             child: Text(
-              value?.toString() ?? "Not available",
+              value?.toString() ?? "Not available", // Convert value to string
               style: const TextStyle(color: Colors.black54),
               overflow: TextOverflow.ellipsis,
             ),
