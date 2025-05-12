@@ -19,15 +19,6 @@ class HomeScreen extends StatelessWidget {
             Image.asset('images/logo2.jpeg', width: 220, height: 220), // Logo
 
             SizedBox(height: 80), // Spacing
-
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to Sign In Page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SignUpScreen()),
-                );
-              },
             ElevatedButton(
               onPressed: () {
                 // Navigate to Sign In Page
@@ -40,11 +31,7 @@ class HomeScreen extends StatelessWidget {
                 backgroundColor: Colors.blue.shade900,
                 padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
                 textStyle: TextStyle(fontSize: 15, color: Colors.white),
-                backgroundColor: Colors.blue.shade900,
-                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
-                textStyle: TextStyle(fontSize: 15, color: Colors.white),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
@@ -66,18 +53,15 @@ class HomeScreen extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => LoginScreen()));
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 233, 93, 72),
-                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
-                textStyle: TextStyle(fontSize: 15, color: Colors.white),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                backgroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5), 
+                 textStyle: TextStyle(fontSize: 15,color: Colors.white), 
+                 shape: RoundedRectangleBorder(
+                 borderRadius: BorderRadius.circular(12), 
+                   ),
               ),
-              child: Text("Login",
-                  style: TextStyle(
-                    color: const Color.fromARGB(255, 255, 255, 255),
-                    fontWeight: FontWeight.bold,
-                  )),
+              
+              child: Text("Login",style: TextStyle(color: Colors.blue.shade900),),
             ),
           ],
         ),

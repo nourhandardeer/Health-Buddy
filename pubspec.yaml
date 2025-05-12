@@ -73,7 +73,7 @@ flutter_launcher_icons:
   ios: true
   image_path: "images/logo2.jpeg"
 
-    - images/
+    
     #  - assets/sounds/notification_sound.mp3
 
     
