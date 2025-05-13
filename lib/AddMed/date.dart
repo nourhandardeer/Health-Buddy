@@ -97,6 +97,14 @@ class _DatePageState extends State<DatePage> {
   }
 
   bool _isLoading = false;
+  FlutterTts flutterTts = FlutterTts();
+
+  // Call this function when notification fires
+  Future<void> speakReminder(String message) async {
+    await flutterTts.setLanguage("en-US"); // Set language
+    await flutterTts.setSpeechRate(0.5); // Slower speed for elderly
+    await flutterTts.speak(message); // Speak the reminder
+  }
 
   Future<void> saveSelection() async {
     setState(() {
@@ -108,14 +116,18 @@ class _DatePageState extends State<DatePage> {
       };
 
       if (isReminderSelection) {
+        dataToSave['reminderCount'] = selectedHours.length;
+        List<String> reminderTimes = [];
         for (int i = 0; i < selectedHours.length; i++) {
           String formattedTime =
               "${selectedHours[i].toString().padLeft(2, '0')}:${selectedMinutes[i].toString().padLeft(2, '0')} ${isAMs[i] ? 'AM' : 'PM'}";
-          dataToSave['reminderTime${i + 1}'] = formattedTime;
+          reminderTimes.add(formattedTime);
 
           // Convert the selected time into a DateTime object
           DateTime now = DateTime.now();
-          int hour = isAMs[i] ? selectedHours[i] : (selectedHours[i] % 12) + 12;
+          int hour =
+              isAMs[i] ? (selectedHours[i] % 12) : (selectedHours[i] % 12) + 12;
+
           DateTime scheduledTime = DateTime(
             now.year,
             now.month,
@@ -129,25 +141,21 @@ class _DatePageState extends State<DatePage> {
                 days: 1)); // Schedule for next day if time already passed
           }
 
-          FlutterTts flutterTts = FlutterTts();
-          // Call this function when notification fires
-          Future<void> speakReminder(String message) async {
-            await flutterTts.setLanguage("en-US"); // Set language
-            await flutterTts.setSpeechRate(0.5); // Slower speed for elderly
-            await flutterTts.speak(message); // Speak the reminder
-          }
-
-          // Schedule the notification
-          await NotificationService.scheduleNotification(
-            id: i + 1,
+          await NotificationService.scheduleRepeatedNotification(
+            baseId: "${widget.documentId}_${i + 1}", // the unique med ID
             title: "Medication Reminder",
             body:
-                "Time to take take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
-            scheduledTime: scheduledTime,
+                "Time to take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
             ttsMessage:
-                "It is time to take your medicine. Please take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
+                "It's time to take your medicine: please take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
+            startTime: scheduledTime, // the actual scheduled DateTime
+            //repeatCount: 36,
+            repeatCount: 3,
+            interval: Duration(minutes: 1),
           );
         }
+        dataToSave['reminderTimes'] = reminderTimes;
+        dataToSave['reminderCount'] = reminderTimes.length;
       } else if (isOnceAWeek) {
         if (selectedSingleDay == null) {
           ScaffoldMessenger.of(context).showSnackBar(

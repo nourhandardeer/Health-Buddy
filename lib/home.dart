@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:health_buddy/services/firestore_service.dart';
+import 'package:health_buddy/services/notification_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:health_buddy/NavigationBar/manage_page.dart';
 import 'package:health_buddy/NavigationBar/medications_page.dart';
@@ -439,30 +440,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
             String frequency =
                 (medData['frequency'] ?? '').toString().toLowerCase();
+            List<String> reminderTimes =
+                List<String>.from(medData['reminderTimes'] ?? []);
             String rawTime = "";
             String doseKey = med.id;
+            int reminderIndex = 0;
 
             if (frequency == "twice a day") {
               if (!(_medTakenStatus['${med.id}_1'] ?? false)) {
-                rawTime = medData['reminderTime1'] ?? "";
+                rawTime = reminderTimes.isNotEmpty ? reminderTimes[0] : "";
                 doseKey = '${med.id}_1';
               } else {
-                rawTime = medData['reminderTime2'] ?? "";
+                rawTime = reminderTimes.length > 1 ? reminderTimes[1] : "";
                 doseKey = '${med.id}_2';
               }
             } else if (frequency == "3 times a day") {
               if (!(_medTakenStatus['${med.id}_1'] ?? false)) {
-                rawTime = medData['reminderTime1'] ?? "";
+                rawTime = reminderTimes.isNotEmpty ? reminderTimes[0] : "";
                 doseKey = '${med.id}_1';
               } else if (!(_medTakenStatus['${med.id}_2'] ?? false)) {
-                rawTime = medData['reminderTime2'] ?? "";
+                rawTime = reminderTimes.length > 1 ? reminderTimes[1] : "";
                 doseKey = '${med.id}_2';
               } else {
-                rawTime = medData['reminderTime3'] ?? "";
+                rawTime = reminderTimes.length > 2 ? reminderTimes[2] : "";
                 doseKey = '${med.id}_3';
               }
             } else {
-              rawTime = medData['reminderTime1'] ?? "";
+              rawTime = reminderTimes.isNotEmpty ? reminderTimes[0] : "";
               doseKey = '${med.id}_1';
             }
 
@@ -713,6 +717,25 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final baseMedId = doseKey.contains('_') ? doseKey.split('_')[0] : doseKey;
+
+      if (_medTakenStatus[doseKey] == true) {
+        final docSnapshot = await FirebaseFirestore.instance
+            .collection('meds')
+            .doc(baseMedId)
+            .get();
+
+        final data = docSnapshot.data();
+        final List<dynamic> reminderTimes = data?['reminderTimes'] ?? [];
+
+        final String takenTime =
+            doseKey ; // This should be the time when the med was taken
+        final int doseIndex = reminderTimes.indexOf(takenTime);
+        
+        
+          await NotificationService.cancelSingleReminderNotifications(takenTime);
+          print("🔔 Cancelled notifications for ${takenTime}");
+         
+      }
       final medDocRef =
           FirebaseFirestore.instance.collection('meds').doc(baseMedId);
 
@@ -721,6 +744,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!medSnapshot.exists) return;
 
         final medData = medSnapshot.data() as Map<String, dynamic>;
+
         final currentInventory = (medData['currentInventory'] ?? 0).toDouble();
         final dosage = double.tryParse(dosageStr) ?? 0;
         final newInventory =

@@ -9,9 +9,40 @@ import 'package:health_buddy/services/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'ChangePasswordPage.dart'; // Import the ChangePasswordPage
 import 'SetPinPage.dart'; // Import the SetPinPage (you can create this page for setting the PIN)
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
 
-class SettingsPage extends StatelessWidget {
+
+class SettingsPage extends StatefulWidget  {
   const SettingsPage({super.key});
+
+   @override
+  _SettingsPageState createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationSetting();
+  }
+
+  Future<void> _loadNotificationSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    });
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = value;
+    });
+    await prefs.setBool('notifications_enabled', value);
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +75,12 @@ class SettingsPage extends StatelessWidget {
             leading: Icon(Icons.notifications, color: Colors.orange),
             title: Text('Notifications'),
             subtitle: Text('Manage alerts and reminders'),
-            trailing: Switch(value: true, onChanged: (bool value) {}),
+            trailing: Switch(
+              value: _notificationsEnabled,
+              onChanged: (bool value) {
+                _toggleNotifications(value);
+              },
+            ),
           ),
           Divider(),
 
