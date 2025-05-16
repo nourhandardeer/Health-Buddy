@@ -78,7 +78,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           errorMessage = errorMsg;
         });
       }
-
     } catch (e) {
       print("Registration error: $e"); // Add this
       setState(() {
@@ -88,8 +87,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       setState(() {
         _isLoading = false;
       });
-
-  }
+    }
   }
 
   void _onSignupSuccess(
@@ -124,8 +122,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       print("Error checking emergency contact linkage: \$e");
     }
   }
-  
-
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +135,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const SizedBox(height: 50),
                   Text('Create an Account',
                       style: Theme.of(context)
                           .textTheme
@@ -146,12 +143,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ?.copyWith(
                               color: Colors.blue.shade900,
                               fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text('Sign Up',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(color: Colors.blue.shade900)),
                   const SizedBox(height: 16),
                   Image.asset('images/logo2.jpeg', width: 200, height: 200),
                   const SizedBox(height: 24),
@@ -243,15 +234,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () {
-              // Navigate to Login Page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                );
-              },
+                      // Navigate to Login Page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => LoginScreen()),
+                      );
+                    },
                     child: const Text(
                       "Already have an account? Login",
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Color.fromARGB(255, 13, 71, 161)),
                     ),
                   ),
                 ],
@@ -282,6 +275,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
+          hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -295,5 +289,3 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
-
-

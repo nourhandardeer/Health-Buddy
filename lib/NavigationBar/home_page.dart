@@ -35,7 +35,9 @@ class _HomePageState extends State<HomePage> {
         if (medSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (medSnapshot.hasError || !medSnapshot.hasData || medSnapshot.data!.docs.isEmpty) {
+        if (medSnapshot.hasError ||
+            !medSnapshot.hasData ||
+            medSnapshot.data!.docs.isEmpty) {
           return const Center(
             child: Text(
               "No medications found",
@@ -57,7 +59,8 @@ class _HomePageState extends State<HomePage> {
             bool isCompleted = completedMedications.contains(medId);
 
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Row(
                 children: [
                   Text(
@@ -73,6 +76,7 @@ class _HomePageState extends State<HomePage> {
                   // Medication Card
                   Expanded(
                     child: Container(
+                      width: MediaQuery.of(context).size.width * 0.15,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -157,10 +161,12 @@ class _HomePageState extends State<HomePage> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.redAccent, width: 2),
-                        color: isCompleted ? Colors.redAccent : Colors.transparent,
+                        color:
+                            isCompleted ? Colors.redAccent : Colors.transparent,
                       ),
                       child: isCompleted
-                          ? const Icon(Icons.check, color: Colors.white, size: 18)
+                          ? const Icon(Icons.check,
+                              color: Colors.white, size: 18)
                           : null,
                     ),
                   ),

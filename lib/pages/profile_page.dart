@@ -25,7 +25,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _fetchUserProfile();
-      updateCurrentUserLocation();
+    updateCurrentUserLocation();
 
     _checkIfEmergencyContact();
   }
@@ -35,16 +35,26 @@ class _ProfilePageState extends State<ProfilePage> {
     if (user == null) return;
 
     try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
         setState(() {
           _userId = user.uid;
           _fullName = "${data['firstName']} ${data['lastName']}";
-          _profileImageUrl = data['profileImage']?.isNotEmpty == true ? data['profileImage'] : "images/user.png";
-          _age = (data['age'] != null && data['age'].isNotEmpty) ? data['age'] : "Unknown";
-          _illnesses = (data['illnesses'] != null && data['illnesses'].isNotEmpty) ? data['illnesses'] : "No illnesses specified";
+          _profileImageUrl = data['profileImage']?.isNotEmpty == true
+              ? data['profileImage']
+              : "images/user.png";
+          _age = (data['age'] != null && data['age'].isNotEmpty)
+              ? data['age']
+              : "Unknown";
+          _illnesses =
+              (data['illnesses'] != null && data['illnesses'].isNotEmpty)
+                  ? data['illnesses']
+                  : "No illnesses specified";
         });
 
         _fetchEmergencyContacts(user.uid);
@@ -56,7 +66,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _fetchEmergencyContacts(String userId) async {
     try {
-      QuerySnapshot contactsSnapshot = await FirebaseFirestore.instance.collection('users').doc(userId).collection('emergencyContacts').get();
+      QuerySnapshot contactsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('emergencyContacts')
+          .get();
 
       List<Map<String, dynamic>> contacts = contactsSnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -81,20 +95,28 @@ class _ProfilePageState extends State<ProfilePage> {
     if (user == null) return;
 
     try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
       if (!userDoc.exists || userDoc['phone'] == null) return;
       String phoneNumber = userDoc['phone'];
 
-      String? patientId = await _firestoreService.getOriginalPatientId(phoneNumber);
+      String? patientId =
+          await _firestoreService.getOriginalPatientId(phoneNumber);
 
       if (patientId == null) return; // No linked patient found
 
-      DocumentSnapshot patientDoc = await FirebaseFirestore.instance.collection('users').doc(patientId).get();
+      DocumentSnapshot patientDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(patientId)
+          .get();
 
       if (patientDoc.exists) {
         setState(() {
-          _linkedPatientName = "${patientDoc['firstName']} ${patientDoc['lastName']}";
+          _linkedPatientName =
+              "${patientDoc['firstName']} ${patientDoc['lastName']}";
         });
       }
     } catch (e) {
@@ -102,14 +124,17 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-
-
   void _deleteEmergencyContact(Map<String, dynamic> contact) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('emergencyContacts').doc(contact['id']).delete();
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('emergencyContacts')
+          .doc(contact['id'])
+          .delete();
 
       setState(() {
         _emergencyContacts.remove(contact);
@@ -129,7 +154,12 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Profile'), centerTitle: true),
+      appBar: AppBar(
+          title: Text(
+            'Profile',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Center(
@@ -138,13 +168,17 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               CircleAvatar(
                 radius: 60,
-                backgroundImage: _profileImageUrl.startsWith('http') ? NetworkImage(_profileImageUrl) : AssetImage("images/user.png") as ImageProvider,
+                backgroundImage: _profileImageUrl.startsWith('http')
+                    ? NetworkImage(_profileImageUrl)
+                    : AssetImage("images/user.png") as ImageProvider,
                 backgroundColor: Colors.transparent,
               ),
               SizedBox(height: 16),
-              Text(_fullName, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(_fullName,
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               SizedBox(height: 4),
-              Text('Age: $_age | $_illnesses', style: TextStyle(fontSize: 18, color: Colors.grey)),
+              Text('Age: $_age | $_illnesses',
+                  style: TextStyle(fontSize: 18, color: Colors.grey)),
               SizedBox(height: 16),
               if (_linkedPatientName != null)
                 Container(
@@ -156,11 +190,15 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   child: Text(
                     "You are an emergency contact for $_linkedPatientName.",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue[900]),
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[900]),
                     textAlign: TextAlign.center,
                   ),
                 ),
-              Text('Emergency Contacts', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text('Emergency Contacts',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
               Expanded(
                 child: _emergencyContacts.isEmpty
@@ -171,8 +209,10 @@ class _ProfilePageState extends State<ProfilePage> {
                         itemBuilder: (context, index) {
                           var contact = _emergencyContacts[index];
                           return ListTile(
-                            leading: Icon(Icons.phone, color: Colors.red),
-                            title: Text(contact["name"], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            leading: Icon(Icons.phone, color: Colors.green),
+                            title: Text(contact["name"],
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                             subtitle: Text('${contact["phone"]}'),
                             trailing: IconButton(
                               icon: Icon(Icons.delete, color: Colors.red),

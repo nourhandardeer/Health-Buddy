@@ -23,10 +23,10 @@ class _AddMedicationPageState extends State<AddMedicationPage> {
   String? tempDocId;
 
   final List<String> units = [
-    "Pills",
-    "Ampoules",
-    "Tablets",
-    "Capsules",
+    "Pill(s)",
+    "Ampoule(s)",
+    "Tablet(s)",
+    "Capsule(s)",
     "IU",
     "Application",
     "Drop",

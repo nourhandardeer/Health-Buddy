@@ -14,6 +14,7 @@ import 'package:health_buddy/pages/setting/PinVerificationPage.dart'; // Import 
 import 'package:cloudinary_url_gen/cloudinary.dart';
 import 'package:cloudinary_flutter/image/cld_image.dart';
 import 'package:cloudinary_flutter/cloudinary_context.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,40 +60,45 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
+    return ScreenUtilInit(
+      designSize: const Size(375, 812), // Base design (iPhone 11)
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        final themeProvider = Provider.of<ThemeProvider>(context);
 
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      builder: DevicePreview.appBuilder,
-      themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-
-      theme: ThemeData(
-        brightness: Brightness.light,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.black),
-          bodyMedium: TextStyle(color: Colors.black87),
-          titleLarge: TextStyle(color: Colors.black),
-        ),
-        colorScheme: const ColorScheme.light(
-          background: Colors.white,
-          onBackground: Colors.black,
-        ),
-      ),
-
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white70),
-          titleLarge: TextStyle(color: Colors.white),
-        ),
-        colorScheme: const ColorScheme.dark(
-          background: Colors.black,
-          onBackground: Colors.white,
-        ),
-      ),
-
-      home: const AuthCheck(), // Home check
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          builder: DevicePreview.appBuilder,
+          themeMode:
+              themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          theme: ThemeData(
+            brightness: Brightness.light,
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(color: Colors.black),
+              bodyMedium: TextStyle(color: Colors.black87),
+              titleLarge: TextStyle(color: Colors.black),
+            ),
+            colorScheme: const ColorScheme.light(
+              background: Colors.white,
+              onBackground: Colors.black,
+            ),
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(color: Colors.white),
+              bodyMedium: TextStyle(color: Colors.white70),
+              titleLarge: TextStyle(color: Colors.white),
+            ),
+            colorScheme: const ColorScheme.dark(
+              background: Colors.black,
+              onBackground: Colors.white,
+            ),
+          ),
+          home: const AuthCheck(), // Home check
+        );
+      },
     );
   }
 }

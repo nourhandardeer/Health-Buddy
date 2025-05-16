@@ -104,45 +104,81 @@ class ManagePage extends StatelessWidget {
 
               return Scaffold(
                 body: hasAppointments
-                    ? ListView.builder(
+                    ? ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: snapshot.data!.docs.length,
+                        separatorBuilder: (_, __) =>
+                            const Divider(thickness: 1, color: Colors.grey),
                         itemBuilder: (context, index) {
                           var appointment = snapshot.data!.docs[index];
                           String appointmentId = appointment.id;
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: ListTile(
-                              leading:
-                                  const Icon(Icons.event, color: Colors.blue),
-                              trailing: IconButton(
-                                  onPressed: () =>
-                                      deleteAppointment(appointmentId, context),
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  )),
-                              title: Text(
-                                appointment['doctorName'],
-                                style: const TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
+                          return Container(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color.fromARGB(255, 220, 232, 242),
+                                  Color(0xFFFFFFFF),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              subtitle: Text(
-                                "Date: ${appointment['appointmentDate']} | Time: ${appointment['appointmentTime']}",
-                                style: const TextStyle(fontSize: 14),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.shade100,
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Card(
+                              color: Colors.transparent,
+                              elevation: 0,
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                leading:
+                                    const Icon(Icons.event, color: Colors.blue),
+                                trailing: IconButton(
+                                    onPressed: () => deleteAppointment(
+                                        appointmentId, context),
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    )),
+                                title: Text(
+                                  "Dr. ${appointment['doctorName']}",
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Date: ${appointment['appointmentDate']}",
+                                      style: const TextStyle(
+                                          fontSize: 10, color: Colors.grey),
+                                    ),
+                                    Text(
+                                      "Time: ${appointment['appointmentTime']}",
+                                      style: const TextStyle(
+                                          fontSize: 10, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () {
+                                  _showAppointmentDetails(
+                                    context,
+                                    appointment['doctorName'],
+                                    appointment['doctorPhone'],
+                                    appointment['specialty'],
+                                    appointment['location'],
+                                    appointment['notes'],
+                                    appointment['appointmentDate'],
+                                    appointment['appointmentTime'],
+                                  );
+                                },
                               ),
-                              onTap: () {
-                                _showAppointmentDetails(
-                                  context,
-                                  appointment['doctorName'],
-                                  appointment['doctorPhone'],
-                                  appointment['specialty'],
-                                  appointment['location'],
-                                  appointment['notes'],
-                                  appointment['appointmentDate'],
-                                  appointment['appointmentTime'],
-                                );
-                              },
                             ),
                           );
                         },

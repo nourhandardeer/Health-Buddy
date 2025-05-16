@@ -57,7 +57,8 @@ class _RefillsPageState extends State<RefillsPage> {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: documents.length,
-          separatorBuilder: (_, __) => const Divider(thickness: 1, color: Colors.grey),
+          separatorBuilder: (_, __) =>
+              const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
             final data = documents[index].data() as Map<String, dynamic>;
             final medName = data["name"]?.toString() ?? "Unknown Medication";
@@ -82,10 +83,19 @@ class _RefillsPageState extends State<RefillsPage> {
               remindMeWhen = thresholdRaw.toInt();
             }
 
-            final reminderTimeStr = data["reminderTime1"] ?? "Not set";
-            DateTime? scheduledTime = reminderTimeStr != "Not set"
-                ? _convertTimeToDateTime(reminderTimeStr)
-                : null;
+            final List<dynamic>? reminderTimes = data["reminderTimes"];
+            final String reminderTimeStr =
+                (reminderTimes != null && reminderTimes.isNotEmpty)
+                    ? (reminderTimes[0] as String)
+                    : "Not set";
+
+            if (reminderTimes != null && reminderTimes.isNotEmpty) {
+              for (var time in reminderTimes) {
+                final String timeStr = time as String;
+                DateTime scheduledTime = _convertTimeToDateTime(timeStr);
+                // Schedule each reminder here
+              }
+            }
 
             if (inventory > 0 &&
                 inventory <= remindMeWhen &&
@@ -93,51 +103,80 @@ class _RefillsPageState extends State<RefillsPage> {
               _notifiedMeds.add(medName);
 
               final DateTime now = DateTime.now();
-              final DateTime notificationTime = now.add(const Duration(seconds: 5));
+              final DateTime notificationTime =
+                  now.add(const Duration(seconds: 5));
 
               NotificationService.scheduleNotification(
                 id: medName.hashCode ^ notificationTime.hashCode,
                 title: "Refill Reminder: $medName",
                 body: "Your medication inventory is low! Please refill soon.",
-                ttsMessage: "Your medication $medName inventory is low! Please refill soon.",
+                ttsMessage:
+                    "Your medication $medName inventory is low! Please refill soon.",
                 scheduledTime: notificationTime,
                 speakImmediately: true,
               );
             }
 
-            return Card(
-              color: Colors.grey[200],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ListTile(
-                leading: Image.asset("images/drugs.png", width: 50, height: 50),
-                trailing: const Icon(Icons.notifications, size: 35),
-                title: Text(
-                  medName,
-                  style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black,
-                  ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Current Inventory: $inventory ${data["unit"] ?? ""}",
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                    Text(
-                      "Reminder Time: $reminderTimeStr",
-                      style: const TextStyle(fontSize: 14, color: Colors.blue),
-                    ),
+            return Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color.fromARGB(255, 220, 232, 242),
+                    Color(0xFFFFFFFF),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RefillDetailsPage(medData: data),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.shade100,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Card(
+                color: Colors.transparent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  leading:
+                      Image.asset("images/drugs.png", width: 30, height: 30),
+                  trailing: const Icon(Icons.notifications, size: 35),
+                  title: Text(
+                    medName,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
-                  );
-                },
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Current Inventory: $inventory ${data["unit"] ?? ""}",
+                        style:
+                            const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                      Text(
+                        "Reminder Time: $reminderTimeStr",
+                        style:
+                            const TextStyle(fontSize: 10, color: Colors.blue),
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RefillDetailsPage(medData: data),
+                      ),
+                    );
+                  },
+                ),
               ),
             );
           },

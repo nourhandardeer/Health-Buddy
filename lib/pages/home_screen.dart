@@ -29,7 +29,7 @@ class HomeScreen extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade900,
-                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5),
+                padding: EdgeInsets.symmetric(horizontal: 100, vertical: 5),
                 textStyle: TextStyle(fontSize: 15, color: Colors.white),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -54,14 +54,19 @@ class HomeScreen extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 150, vertical: 5), 
-                 textStyle: TextStyle(fontSize: 15,color: Colors.white), 
-                 shape: RoundedRectangleBorder(
-                 borderRadius: BorderRadius.circular(12), 
-                   ),
+                padding: EdgeInsets.symmetric(horizontal: 100, vertical: 5),
+                textStyle: TextStyle(fontSize: 15, color: Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              
-              child: Text("Login",style: TextStyle(color: Colors.blue.shade900),),
+              child: Text(
+                "Login",
+                style: TextStyle(
+                  color: Colors.blue.shade900,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
