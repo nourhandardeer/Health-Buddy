@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:intl/intl.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,12 +57,13 @@ class NotificationService {
 
   // ✅ Preferences Logic
   static Future<bool> areNotificationsEnabled() async {
-  final prefs = await SharedPreferences.getInstance();
-  bool enabled = prefs.getBool(_prefsKey) ?? true; // Default to true if not set
-  print("Notifications Enabled: $enabled"); // Debugging line to print the state
-  return enabled;
-}
-
+    final prefs = await SharedPreferences.getInstance();
+    bool enabled =
+        prefs.getBool(_prefsKey) ?? true; // Default to true if not set
+    print(
+        "Notifications Enabled: $enabled"); // Debugging line to print the state
+    return enabled;
+  }
 
   static Future<void> setNotificationsEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
@@ -172,39 +174,112 @@ class NotificationService {
     bool enabled = await areNotificationsEnabled();
     if (!enabled) return;
 
-    for (int i = 0; i < repeatCount; i++) {
-      final int id = generateNotificationId(baseId, i);
-      print("Generated ID: $id for base $baseId");
+    try {
+      for (int i = 0; i < repeatCount; i++) {
+        final int id = generateNotificationId(baseId, i);
+        print("Generated ID: $id for base $baseId");
 
-      final scheduledTime = startTime.add(interval * i);
-      final tz.TZDateTime tzScheduledTime =
-          tz.TZDateTime.from(scheduledTime, tz.local);
+        final scheduledTime = startTime.add(interval * i);
+        final tz.TZDateTime tzScheduledTime =
+            tz.TZDateTime.from(scheduledTime, tz.local);
 
-      const AndroidNotificationDetails androidDetails =
-          AndroidNotificationDetails(
-        'medication_channel_id',
-        'Medication Reminders',
-        channelDescription: 'Channel for medication reminder notifications',
-        importance: Importance.high,
-        priority: Priority.high,
-        playSound: true,
-        enableVibration: true,
-        visibility: NotificationVisibility.public,
-      );
+        const AndroidNotificationDetails androidDetails =
+            AndroidNotificationDetails(
+          'medication_channel_id',
+          'Medication Reminders',
+          channelDescription: 'Channel for medication reminder notifications',
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          visibility: NotificationVisibility.public,
+        );
 
-      const NotificationDetails platformDetails =
-          NotificationDetails(android: androidDetails);
+        const NotificationDetails platformDetails =
+            NotificationDetails(android: androidDetails);
 
-      await _notificationsPlugin.zonedSchedule(
-        id,
-        title,
-        body,
-        tzScheduledTime,
-        platformDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time,
-        payload: ttsMessage,
-      );
+        await _notificationsPlugin.zonedSchedule(
+          id,
+          title,
+          body,
+          tzScheduledTime,
+          platformDetails,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          matchDateTimeComponents: DateTimeComponents.time,
+          payload: ttsMessage,
+        );
+      }
+    } catch (e) {
+      print("❌ Failed to schedule repeated notification: $e");
+    }
+  }
+
+  static Future<void> scheduleDailyMedReminders(String uid) async {
+    if (!_isInitialized) await initialize();
+    bool enabled = await areNotificationsEnabled();
+    if (!enabled) return;
+
+    print("🔄 Starting to schedule daily medication reminders for user: $uid");
+
+    final medsSnapshot = await FirebaseFirestore.instance
+        .collection('meds')
+        .where('linkedUserIds', arrayContains: uid)
+        .get();
+    print("📂 Medications fetched: ${medsSnapshot.docs.length}");
+
+    final now = DateTime.now();
+    final timeFormat = DateFormat.jm(); // Format for parsing "06:46 AM"
+
+    for (final doc in medsSnapshot.docs) {
+      final data = doc.data();
+      if (!data.containsKey('reminderTimes')) {
+        print("⚠️ Skipping '${doc.id}': No 'reminderTimes' field found.");
+        continue;
+      }
+      final reminderTimes = data['reminderTimes'] as List<dynamic>;
+
+      for (int i = 0; i < reminderTimes.length; i++) {
+        final timeString = reminderTimes[i] as String;
+
+        final time = timeFormat.parse(timeString);
+
+        final medName = data['name'] ?? 'Medication Reminder';
+        final docId = doc.id;
+        final dosage = data['dosage'] ?? 'Dosage not specified';
+        final selectedUnit = data['unit'] ?? 'Unit not specified';
+
+        DateTime scheduledDateTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          time.hour,
+          time.minute,
+        );
+
+        print("⏰ Now: $now");
+        print("⏰ Initial scheduled time: $scheduledDateTime");
+
+        if (scheduledDateTime.isBefore(now)) {
+          print(
+              "⏭ Reminder time has already passed today. Scheduling for tomorrow instead.");
+          scheduledDateTime = scheduledDateTime.add(Duration(days: 1));
+        }
+
+        print("📅 Final scheduled time: $scheduledDateTime");
+
+        await scheduleRepeatedNotification(
+          baseId: "${docId}_${i + 1}",
+          title: 'Time for $medName',
+          body:"Time to take ${dosage} ${selectedUnit} of ${medName}",
+          startTime: scheduledDateTime,
+          ttsMessage: "It's time to take your medicine: please take ${dosage} ${selectedUnit} of ${medName}.",
+          repeatCount: 3,
+          interval: const Duration(minutes: 1),
+        );
+        print("🗓 Scheduling notification for '$medName'");
+        print("📅 Scheduled time: $scheduledDateTime");
+        print("🔔 Notification ID: ${docId}_${i + 1}");
+      }
     }
   }
 

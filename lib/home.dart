@@ -31,6 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     loadTakenMedsForToday();
+    final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+     NotificationService.scheduleDailyMedReminders(user.uid);
+    print("👤 User logged in: ${user.uid}, and notifications rescheduled");
+  }
   }
 
   void _onNavItemTapped(int index) {
@@ -38,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
   }
+
+  
 
   Widget _buildUserName() {
     final user = FirebaseAuth.instance.currentUser;
