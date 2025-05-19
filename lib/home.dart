@@ -26,16 +26,13 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _selectedDay;
   Map<String, bool> _medTakenStatus = {};
   final FirestoreService _firestoreService = FirestoreService();
+  bool? _isEmergencyContact;
 
   @override
   void initState() {
     super.initState();
     loadTakenMedsForToday();
-    final user = FirebaseAuth.instance.currentUser;
-  if (user != null) {
-     NotificationService.scheduleDailyMedReminders(user.uid);
-    print("👤 User logged in: ${user.uid}, and notifications rescheduled");
-  }
+    _checkEmergencyContactStatus();
   }
 
   void _onNavItemTapped(int index) {
@@ -43,9 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
   }
-
-  
-
+  void _checkEmergencyContactStatus() async {
+    bool status = await _firestoreService.isEmergencyContact();
+    setState(() {
+      _isEmergencyContact = status;
+      print('the user is emergency $_isEmergencyContact');
+    });
+  }
   Widget _buildUserName() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -66,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return FutureBuilder<DocumentSnapshot>(
       future:
-          FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+      FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Text('Loading...',
@@ -275,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final appointments = snapshot.data!;
         final selectedDate = _selectedDay ?? _focusedDay;
         final selectedDay =
-            DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
         //   final oneDayBefore = selectedDay.subtract(const Duration(days: 1));
         final oneDayAfter = selectedDay.add(const Duration(days: 1));
 
@@ -365,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: filteredAppointments.length,
               itemBuilder: (context, index) {
                 final data =
-                    filteredAppointments[index].data() as Map<String, dynamic>;
+                filteredAppointments[index].data() as Map<String, dynamic>;
 
                 final doctorName = data['doctorName'] ?? 'Unknown';
                 final appointmentDate = data['appointmentDate'] ?? 'N/A';
@@ -373,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
@@ -501,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
         var filteredMeds = medications.where((doc) {
           var medData = doc.data() as Map<String, dynamic>;
           String frequency =
-              (medData['frequency'] ?? '').toString().toLowerCase();
+          (medData['frequency'] ?? '').toString().toLowerCase();
 
           final selectedDate = _selectedDay ?? _focusedDay;
           final todayName = getDayName(selectedDate.weekday);
@@ -573,9 +574,9 @@ class _HomeScreenState extends State<HomeScreen> {
             var medData = med.data() as Map<String, dynamic>;
 
             String frequency =
-                (medData['frequency'] ?? '').toString().toLowerCase();
+            (medData['frequency'] ?? '').toString().toLowerCase();
             List<String> reminderTimes =
-                List<String>.from(medData['reminderTimes'] ?? []);
+            List<String>.from(medData['reminderTimes'] ?? []);
             String rawTime = "";
             String doseKey = med.id;
 
@@ -607,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             return Padding(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,8 +652,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       return Colors.transparent;
                                     }),
                                     checkColor:
-                                        MaterialStateProperty.all<Color>(
-                                            Colors.white),
+                                    MaterialStateProperty.all<Color>(
+                                        Colors.white),
                                     shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(6)),
                                     side: const BorderSide(
@@ -665,16 +666,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                   scale: 1.2,
                                   child: Checkbox(
                                     value: false,
-                                    onChanged: (bool? value) async {
+                                    onChanged: (_isEmergencyContact == true)
+                                        ? null // disables interaction for emergency contacts
+                                        : (bool? value) async {
                                       if (value == null || !value) return;
                                       setState(() {
                                         _medTakenStatus[doseKey] = true;
                                       });
-                                      final dosageStr =
-                                          medData['dosage'].toString();
-                                      await markMedicationAsTaken(
-                                          doseKey, dosageStr);
+                                      final dosageStr = medData['dosage'].toString();
+                                      await markMedicationAsTaken(doseKey, dosageStr);
                                     },
+                                    // onChanged: (bool? value) async {
+                                    //   if (value == null || !value) return;
+                                    //   setState(() {
+                                    //     _medTakenStatus[doseKey] = true;
+                                    //   });
+                                    //   final dosageStr =
+                                    //       medData['dosage'].toString();
+                                    //   await markMedicationAsTaken(
+                                    //       doseKey, dosageStr);
+                                    // },
                                   ),
                                 ),
                               ),
@@ -696,7 +707,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   content: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                           "Dosage: ${medData['dosage']} ${medData['unit']}"),
@@ -758,7 +769,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         medData['name'] ?? "Unknown",
@@ -917,7 +928,7 @@ class _HomeScreenState extends State<HomeScreen> {
         print("🔔 Cancelled notifications for ${takenTime}");
       }
       final medDocRef =
-          FirebaseFirestore.instance.collection('meds').doc(baseMedId);
+      FirebaseFirestore.instance.collection('meds').doc(baseMedId);
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final medSnapshot = await transaction.get(medDocRef);
@@ -928,7 +939,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final currentInventory = (medData['currentInventory'] ?? 0).toDouble();
         final dosage = double.tryParse(dosageStr) ?? 0;
         final newInventory =
-            (currentInventory - dosage).clamp(0, double.infinity);
+        (currentInventory - dosage).clamp(0, double.infinity);
 
         transaction.update(medDocRef, {'currentInventory': newInventory});
       });

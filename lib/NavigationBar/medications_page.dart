@@ -119,11 +119,11 @@ class _MedicationsPageState extends State<MedicationsPage> {
                       title: Text(
                         medData["name"] ?? "Unknown Medication",
                         style:
-                            const TextStyle(color: Colors.black, fontSize: 12),
+                            const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(
                         " ${medData['frequency'] ?? 'Specific Days '}",
-                        style: TextStyle(color: Colors.grey[700], fontSize: 10),
+                        style: TextStyle(color: Colors.grey[700], fontSize: 12),
                       ),
                       onTap: () {
                         Navigator.push(

@@ -191,7 +191,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return Scaffold(
       appBar: AppBar(title: Text("Profile Setup")),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(15.0),
         child: Column(
           children: [
             GestureDetector(

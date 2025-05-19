@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/locationHelper.dart'; // تأكدي من المسار هنا
+import '../services/locationHelper.dart';
 
 class RefillDetailsPage extends StatefulWidget {
   final Map<String, dynamic> medData;
@@ -50,7 +50,7 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ Dynamic
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
         title: Text(widget.medData["name"] ?? "Medication Details"),
@@ -81,11 +81,11 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
                     _buildDetailRow(Icons.inventory, "Current Inventory",
                         "${widget.medData["currentInventory"] ?? "0"} ${widget.medData["unit"] ?? ""}"),
                     _buildDetailRow(Icons.access_time, "Reminder Time",
-                        widget.medData["reminderTime"] ?? "Not set"),
-                    _buildDetailRow(Icons.date_range, "Next Refill Date",
-                        widget.medData["nextRefillDate"] ?? "Not available"),
-                    _buildDetailRow(Icons.person, "Doctor’s Notes",
-                        widget.medData["doctorNotes"] ?? "No notes available"),
+                        widget.medData["reminderTimes"] ?? "Not set"),
+                    _buildDetailRow(Icons.date_range, "Reminder To Refill When",
+                        "${widget.medData["remindMeWhen"] ?? "0"} ${widget.medData["unit"] ?? ""}"),
+                    // _buildDetailRow(Icons.person, "Doctor’s Notes",
+                    //     widget.medData["doctorNotes"] ?? "No notes available"),
                   ],
                 ),
               ),

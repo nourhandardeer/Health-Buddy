@@ -307,6 +307,7 @@ class Auth {
       );
 
       await userCredential.user?.sendEmailVerification();
+
       /// Call this after verifying the user's email
       Future<void> verifyAndCompleteSetup({
         required String firstName,

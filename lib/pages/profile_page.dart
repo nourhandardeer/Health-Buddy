@@ -20,16 +20,22 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _userId;
   List<Map<String, dynamic>> _emergencyContacts = [];
   final FirestoreService _firestoreService = FirestoreService();
+  bool _isEmergencyContact = false;
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
     updateCurrentUserLocation();
-
     _checkIfEmergencyContact();
   }
 
+  void _checkIfEmergency() async {
+    final result = await _firestoreService.isEmergencyContact();
+    setState(() {
+      _isEmergencyContact = result;
+    });
+  }
   Future<void> _fetchUserProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -117,6 +123,7 @@ class _ProfilePageState extends State<ProfilePage> {
         setState(() {
           _linkedPatientName =
               "${patientDoc['firstName']} ${patientDoc['lastName']}";
+          _isEmergencyContact = true;
         });
       }
     } catch (e) {
@@ -177,8 +184,10 @@ class _ProfilePageState extends State<ProfilePage> {
               Text(_fullName,
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               SizedBox(height: 4),
-              Text('Age: $_age | $_illnesses',
-                  style: TextStyle(fontSize: 18, color: Colors.grey)),
+              if (!_isEmergencyContact)
+                Text('Age: $_age | $_illnesses',
+                    style: TextStyle(fontSize: 18, color: Colors.grey)),
+
               SizedBox(height: 16),
               if (_linkedPatientName != null)
                 Container(
@@ -197,9 +206,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              Text('Emergency Contacts',
+              if (!_isEmergencyContact)
+                Text('Emergency Contacts',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
+              if (!_isEmergencyContact)
               Expanded(
                 child: _emergencyContacts.isEmpty
                     ? Text("No emergency contacts available.")

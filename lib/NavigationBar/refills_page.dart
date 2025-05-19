@@ -143,12 +143,12 @@ class _RefillsPageState extends State<RefillsPage> {
                     borderRadius: BorderRadius.circular(12)),
                 child: ListTile(
                   leading:
-                      Image.asset("images/drugs.png", width: 30, height: 30),
-                  trailing: const Icon(Icons.notifications, size: 35),
+                      Image.asset("images/drugs.png", width: 32, height: 32),
+                //  trailing: const Icon(Icons.notifications, size: 30),
                   title: Text(
                     medName,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
@@ -159,12 +159,12 @@ class _RefillsPageState extends State<RefillsPage> {
                       Text(
                         "Current Inventory: $inventory ${data["unit"] ?? ""}",
                         style:
-                            const TextStyle(fontSize: 10, color: Colors.grey),
+                            const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       Text(
                         "Reminder Time: $reminderTimeStr",
                         style:
-                            const TextStyle(fontSize: 10, color: Colors.blue),
+                            const TextStyle(fontSize: 12, color: Colors.blue),
                       ),
                     ],
                   ),

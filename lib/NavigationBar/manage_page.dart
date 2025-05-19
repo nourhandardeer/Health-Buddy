@@ -4,228 +4,315 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:health_buddy/pages/add_appointment.dart';
 import 'package:health_buddy/pages/add_doctor.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
+import '../pages/EditAppointmentPage.dart';
+import '../pages/EditDoctorPage.dart';
 import '../services/firestore_service.dart';
 
-class ManagePage extends StatelessWidget {
+class ManagePage extends StatefulWidget {
   ManagePage({super.key});
+  @override
+  State<ManagePage> createState() => _ManagePageState();
+}
+class _ManagePageState extends State<ManagePage> {
   final FirestoreService _firestoreService = FirestoreService();
+  Future<List<QueryDocumentSnapshot>>? _appointmentsFuture;
+  Future<List<QueryDocumentSnapshot>>? _doctorsFuture;
+  Future<List<String>>? _linkedUsersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() async {
+    final linkedUserIds = await _firestoreService.getLinkedUserIds();
+    print("Linked user IDs: $linkedUserIds");
+
+    final appointments = await _firestoreService.getAppointments(linkedUserIds);
+    final doctors = await _firestoreService.getDoctors(linkedUserIds);
+
+    setState(() {
+      _linkedUsersFuture = Future.value(linkedUserIds);
+      _appointmentsFuture = Future.value(appointments);
+      _doctorsFuture = Future.value(doctors);
+    });
+  }
+
+
+  Future<List<QueryDocumentSnapshot>> _getAppointments() async {
+    final linkedUserIds = await _linkedUsersFuture!;
+    return _firestoreService.getAppointments(linkedUserIds);
+  }
+
+  Future<List<QueryDocumentSnapshot>> _getDoctors() async {
+    final linkedUserIds = await _linkedUsersFuture!;
+    return _firestoreService.getDoctors(linkedUserIds);
+  }
+
+
+
+  // void initState() {
+  //   super.initState();
+  //
+  //   // Initialize the linkedUsersFuture
+  //   _linkedUsersFuture = _firestoreService.getLinkedUserIds(); // or getEmergencyUserIds()
+  //
+  //   // Once linked users are loaded, then fetch appointments and doctors
+  //   _linkedUsersFuture!.then((linkedUserIds) {
+  //     setState(() {
+  //       _appointmentsFuture = _firestoreService.getAppointments(linkedUserIds);
+  //       _doctorsFuture = _firestoreService.getDoctors(linkedUserIds);
+  //     });
+  //   });
+  // }
+
+
 
   @override
   Widget build(BuildContext context) {
-    void _showAppointmentDetails(
-        BuildContext context,
-        String doctorName,
-        String doctorPhone,
-        String specialty,
-        String location,
-        String notes,
-        String appointmentDate,
-        String appointmentTime) {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text("👨‍⚕️ $doctorName",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("📅 Date: $appointmentDate",
-                    style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
-                Text("📝 Time: $appointmentTime",
-                    style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
-                Text("📞 Phone: $doctorPhone",
-                    style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
-                Text("🩺 Specialty: $specialty",
-                    style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
-                Text("📍 Location: $location",
-                    style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 10),
-                Text("📝 Notes: $notes", style: const TextStyle(fontSize: 16)),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child:
-                    const Text("Close", style: TextStyle(color: Colors.blue)),
-              ),
-            ],
-          );
-        },
-      );
-    }
-
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Center(
-          child: Text("Please log in to see your appointments."));
+      return const Center(child: Text("Please log in to see your data."));
     }
+
     return FutureBuilder<List<String>>(
-        future: _firestoreService.getEmergencyUserIds(user.uid),
-        builder: (context, linkedUsersSnapshot) {
-          if (linkedUsersSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      future: _linkedUsersFuture,
+      builder: (context, linkedUsersSnapshot) {
+        if (linkedUsersSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (linkedUsersSnapshot.hasError || !linkedUsersSnapshot.hasData) {
-            return const Center(
-              child: Text(
-                "Error loading user data.",
-                style: TextStyle(color: Colors.red),
-              ),
-            );
-          }
-
-          List<String> linkedUserIds = linkedUsersSnapshot.data!;
-          // print("DEBUG: Linked user IDs -> $linkedUserIds");
-          return StreamBuilder<QuerySnapshot>(
-            stream: _firestoreService.getAppointmentsStream(linkedUserIds),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError || !snapshot.hasData) {
-                return const Center(
-                  child: Text(
-                    "Error loading appointments.",
-                    style: TextStyle(color: Colors.red),
-                  ),
-                );
-              }
-              var hasAppointments =
-                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-
-              return Scaffold(
-                body: hasAppointments
-                    ? ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: snapshot.data!.docs.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(thickness: 1, color: Colors.grey),
-                        itemBuilder: (context, index) {
-                          var appointment = snapshot.data!.docs[index];
-                          String appointmentId = appointment.id;
-                          return Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color.fromARGB(255, 220, 232, 242),
-                                  Color(0xFFFFFFFF),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.shade100,
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Card(
-                              color: Colors.transparent,
-                              elevation: 0,
-                              margin: const EdgeInsets.symmetric(vertical: 8),
-                              child: ListTile(
-                                leading:
-                                    const Icon(Icons.event, color: Colors.blue),
-                                trailing: IconButton(
-                                    onPressed: () => deleteAppointment(
-                                        appointmentId, context),
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    )),
-                                title: Text(
-                                  "Dr. ${appointment['doctorName']}",
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Date: ${appointment['appointmentDate']}",
-                                      style: const TextStyle(
-                                          fontSize: 10, color: Colors.grey),
-                                    ),
-                                    Text(
-                                      "Time: ${appointment['appointmentTime']}",
-                                      style: const TextStyle(
-                                          fontSize: 10, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () {
-                                  _showAppointmentDetails(
-                                    context,
-                                    appointment['doctorName'],
-                                    appointment['doctorPhone'],
-                                    appointment['specialty'],
-                                    appointment['location'],
-                                    appointment['notes'],
-                                    appointment['appointmentDate'],
-                                    appointment['appointmentTime'],
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : _buildEmptyState(context),
-                floatingActionButton: FloatingActionButton(
-                  backgroundColor: Colors.blue,
-                  onPressed: () => _showBottomSheet(context),
-                  heroTag: 'appointment-fab',
-                  child: const Icon(Icons.add, color: Colors.white),
-                ),
-              );
-            },
+        if (linkedUsersSnapshot.hasError || !linkedUsersSnapshot.hasData) {
+          return const Center(
+            child: Text("Error loading user data.", style: TextStyle(color: Colors.red)),
           );
-        });
+        }
+
+        final linkedUserIds = linkedUsersSnapshot.data!;
+
+        // Cache the future only once
+        // _appointmentsFuture ??= _firestoreService.getAppointments(linkedUserIds);
+        // _doctorsFuture ??= _firestoreService.getDoctors(linkedUserIds);
+
+        return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            appBar: AppBar(
+              toolbarHeight: 0,
+              bottom: const TabBar(
+                indicatorColor: Colors.blue,
+                labelColor: Colors.blue,
+                tabs: [
+                  Tab(text: "Appointments", icon: Icon(Icons.event)),
+                  Tab(text: "Doctors", icon: Icon(FontAwesomeIcons.userDoctor)),
+                ],
+              ),
+            ),
+            body: TabBarView(
+              children: [
+                _buildAppointmentsTab(context),
+                _buildDoctorsTab(),
+              ],
+            ),
+            floatingActionButton: FloatingActionButton(
+              backgroundColor: Colors.blue,
+              onPressed: () => _showBottomSheet(context),
+              heroTag: 'manage-fab',
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  Future<void> deleteAppointment(
-      String appointmentId, BuildContext context) async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
 
-      FirebaseFirestore firestore = FirebaseFirestore.instance;
+  Widget _buildAppointmentsTab(BuildContext context) {
+    return FutureBuilder<List<QueryDocumentSnapshot>>(
+      future: _appointmentsFuture,
+      builder: (context, snapshot) {
+        print("Building appointments tab");  // This will now run only once per data load
 
-      // Get the appointment document
-      DocumentSnapshot appointmentSnapshot =
-          await firestore.collection('appointments').doc(appointmentId).get();
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return _buildEmptyState(context);
+        }
 
-      if (!appointmentSnapshot.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment not found')),
+        final appointments = snapshot.data!;
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: appointments.length,
+          separatorBuilder: (_, __) => const Divider(thickness: 1, color: Colors.grey),
+          itemBuilder: (context, index) {
+            var appointment = appointments[index];
+            return _buildAppointmentCard(appointment, appointment.id, context);
+          },
         );
+      },
+    );
+  }
+
+  Widget _buildDoctorsTab() {
+    return FutureBuilder<List<QueryDocumentSnapshot>>(
+      future: _doctorsFuture,
+      builder: (context, snapshot) {
+        print("Building doctors tab");  // This will now run only once per data load
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Center(child: Text("No doctors found."));
+        }
+
+        final doctors = snapshot.data!;
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: doctors.length,
+          separatorBuilder: (_, __) => const Divider(thickness: 1, color: Colors.grey),
+          itemBuilder: (context, index) {
+            final doctor = doctors[index];
+            return Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color.fromARGB(255, 220, 232, 242), Color(0xFFFFFFFF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.grey.shade100, blurRadius: 10, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Card(
+                color: Colors.transparent,
+                elevation: 0,
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.person, color: Colors.blue),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteDoctor(doctor.id, context),
+                  ),
+                  title: Text(
+                    "Dr. ${doctor['doctorName']}",
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Specialty: ${doctor['specialty']}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EditDoctorPage(
+                          doctorId: doctor.id,
+                          initialData: doctor.data() as Map<String, dynamic>,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  Future<void> _deleteDoctor(String doctorId, BuildContext context) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final doc = await firestore.collection('doctors').doc(doctorId).get();
+
+      if (!doc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Doctor not found')));
         return;
       }
-      await firestore.collection('appointments').doc(appointmentId).delete();
 
+      await firestore.collection('doctors').doc(doctorId).delete();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Appointment deleted successfully!'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Doctor deleted successfully!'), backgroundColor: Colors.red),
       );
     } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+    }
+  }
+
+
+  Widget _buildAppointmentCard(QueryDocumentSnapshot appointment, String id, BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color.fromARGB(255, 220, 232, 242), Color(0xFFFFFFFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.grey.shade100, blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Card(
+        color: Colors.transparent,
+        elevation: 0,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: ListTile(
+          leading: const Icon(Icons.event, color: Colors.blue),
+          trailing: IconButton(
+            onPressed: () => deleteAppointment(id, context),
+            icon: const Icon(Icons.delete, color: Colors.red),
+          ),
+          title: Text("Dr. ${appointment['doctorName']}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Date: ${appointment['appointmentDate']}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              Text("Time: ${appointment['appointmentTime']}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            ],
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EditAppointmentPage(
+                  appointmentId: id,
+                  initialData: appointment.data() as Map<String, dynamic>,
+                ),
+              ),
+            );
+          },
+
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> deleteAppointment(String appointmentId, BuildContext context) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final doc = await firestore.collection('appointments').doc(appointmentId).get();
+
+      if (!doc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment not found')));
+        return;
+      }
+
+      await firestore.collection('appointments').doc(appointmentId).delete();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+        const SnackBar(content: Text('Appointment deleted successfully!'), backgroundColor: Colors.red),
       );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     }
   }
 
@@ -234,15 +321,10 @@ class ManagePage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            'images/photo2.png',
-            width: 200,
-            height: 200,
-            fit: BoxFit.cover,
-          ),
+          Image.asset('images/photo2.png', width: 200, height: 200, fit: BoxFit.cover),
           const SizedBox(height: 16),
           const Text(
-            'Manage your healthcare easily! Add your preferred pharmacy and track your appointments.',
+            'Manage your healthcare easily! Add your preferred doctor or appointment.',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
@@ -251,13 +333,10 @@ class ManagePage extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               minimumSize: const Size(200, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => _showBottomSheet(context),
-            child: const Text('Get Started',
-                style: TextStyle(fontSize: 18, color: Colors.white)),
+            child: const Text('Get Started', style: TextStyle(fontSize: 18, color: Colors.white)),
           ),
         ],
       ),
@@ -267,61 +346,42 @@ class ManagePage extends StatelessWidget {
   void _showBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Choose an Option', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ListTile(
+              leading: const Icon(Icons.event, color: Colors.blue),
+              title: const Text('Add Appointment'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAppointment()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(FontAwesomeIcons.userDoctor),
+              title: const Text('Add Doctor'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => AddDoctor()));
+              },
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.grey[300],
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.black, fontSize: 18)),
+            ),
+          ],
+        ),
       ),
-      builder: (BuildContext context) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Choose an Option',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.event, color: Colors.blue),
-                title: const Text('Add Appointment'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const AddAppointment()),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  FontAwesomeIcons.userDoctor,
-                ),
-                title: const Text('Add Doctor'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => AddDoctor()),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.grey[300],
-                  minimumSize: const Size(double.infinity, 50),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('Cancel',
-                    style: TextStyle(color: Colors.black, fontSize: 18)),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
+

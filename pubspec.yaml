@@ -67,6 +67,7 @@ flutter:
     - images/logo2.jpeg
     - images/syringe.png
     - images/user.png
+    - assets/medicines.json
   fonts:
     - family: PlayfairDisplay
       fonts:
