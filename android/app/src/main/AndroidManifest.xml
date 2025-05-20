@@ -80,8 +80,6 @@
         <receiver
             android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
             android:exported="true" />
-            <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver" android:exported="false"/>
-            <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" android:exported="false"/>
 
 
         <receiver
@@ -142,9 +140,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <receiver
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
-            android:exported="false"/>
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
             android:exported="false"/>
