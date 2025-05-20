@@ -52,23 +52,6 @@ class _ManagePageState extends State<ManagePage> {
 
 
 
-  // void initState() {
-  //   super.initState();
-  //
-  //   // Initialize the linkedUsersFuture
-  //   _linkedUsersFuture = _firestoreService.getLinkedUserIds(); // or getEmergencyUserIds()
-  //
-  //   // Once linked users are loaded, then fetch appointments and doctors
-  //   _linkedUsersFuture!.then((linkedUserIds) {
-  //     setState(() {
-  //       _appointmentsFuture = _firestoreService.getAppointments(linkedUserIds);
-  //       _doctorsFuture = _firestoreService.getDoctors(linkedUserIds);
-  //     });
-  //   });
-  // }
-
-
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -90,10 +73,6 @@ class _ManagePageState extends State<ManagePage> {
         }
 
         final linkedUserIds = linkedUsersSnapshot.data!;
-
-        // Cache the future only once
-        // _appointmentsFuture ??= _firestoreService.getAppointments(linkedUserIds);
-        // _doctorsFuture ??= _firestoreService.getDoctors(linkedUserIds);
 
         return DefaultTabController(
           length: 2,
@@ -132,8 +111,6 @@ class _ManagePageState extends State<ManagePage> {
     return FutureBuilder<List<QueryDocumentSnapshot>>(
       future: _appointmentsFuture,
       builder: (context, snapshot) {
-        print("Building appointments tab");  // This will now run only once per data load
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -159,8 +136,6 @@ class _ManagePageState extends State<ManagePage> {
     return FutureBuilder<List<QueryDocumentSnapshot>>(
       future: _doctorsFuture,
       builder: (context, snapshot) {
-        print("Building doctors tab");  // This will now run only once per data load
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }

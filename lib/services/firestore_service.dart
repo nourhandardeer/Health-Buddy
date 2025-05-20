@@ -80,56 +80,32 @@ class FirestoreService {
     } catch (e) {
       print("Error fetching original patient ID: $e");
     }
-    return null; // No linked patient found
+    return null;
   }
-
   Future<List<String>> getLinkedUserIds() async {
     User? user = _auth.currentUser;
     if (user == null) return [];
 
-    String currentUserId = user.uid;
+    final Set<String> linkedUserIds = {};
 
-    DocumentSnapshot userDoc =
-    await firestore.collection('users').doc(currentUserId).get();
+    String currentUserId = user.uid;
+    linkedUserIds.add(currentUserId);
+
+    // Get phone number of the current user
+    DocumentSnapshot userDoc = await firestore.collection('users').doc(currentUserId).get();
     String? phoneNumber = userDoc['phone'];
 
-    if (phoneNumber == null || phoneNumber.isEmpty) {
-      return [currentUserId];
+    if (phoneNumber != null && phoneNumber.isNotEmpty) {
+      String? linkedPatientId = await getOriginalPatientId(phoneNumber);
+      if (linkedPatientId != null) {
+        linkedUserIds.add(linkedPatientId);
+      }
     }
+    List<String> emergencyContacts = await getEmergencyUserIds(currentUserId);
+    linkedUserIds.addAll(emergencyContacts);
 
-    String? linkedPatientId = await getOriginalPatientId(phoneNumber);
-
-    if (linkedPatientId != null) {
-      return {linkedPatientId, currentUserId}.toList(); // using Set for deduplication
-    }
-
-    return (await getEmergencyUserIds(currentUserId)).toSet().toList(); // deduplicated
+    return linkedUserIds.toList();
   }
-
-
-  // Future<List<String>> getLinkedUserIds() async {
-  //   User? user = _auth.currentUser;
-  //   if (user == null) return [];
-  //
-  //   String currentUserId = user.uid;
-  //   DocumentSnapshot userDoc =
-  //       await firestore.collection('users').doc(currentUserId).get();
-  //   String? phoneNumber = userDoc['phone'];
-  //
-  //   if (phoneNumber == null || phoneNumber.isEmpty) {
-  //     print("DEBUG: Phone number missing for user -> $currentUserId");
-  //     return [currentUserId];
-  //   }
-  //
-  //   String? linkedPatientId = await getOriginalPatientId(phoneNumber);
-  //   if (linkedPatientId != null) {
-  //     print(
-  //         "DEBUG: User is an emergency contact. Linked patient -> $linkedPatientId");
-  //     return [linkedPatientId, currentUserId];
-  //   }
-  //
-  //   return await getEmergencyUserIds(currentUserId);
-  // }
 
   Future<List<String>> getEmergencyUserIds(String patientId) async {
     List<String> emergencyContactUserIds = [patientId];
@@ -166,44 +142,82 @@ class FirestoreService {
         .where('linkedUserIds', arrayContainsAny: linkedUserIds)
         .get();
   }
-
   Future<List<QueryDocumentSnapshot>> getAppointments(List<String> linkedUserIds) async {
-    if (linkedUserIds.isEmpty) {
-      print("DEBUG: No linked users found. Skipping database query.");
-      return [];
-    }
+    if (linkedUserIds.isEmpty) return [];
 
     List<QuerySnapshot> snapshots = await Future.wait(
-      linkedUserIds.map((id) {
-        return firestore
-            .collection('appointments')
-            .where('linkedUserIds', arrayContains: id)
-            .get();
-      }),
+      linkedUserIds.map((id) => firestore
+          .collection('appointments')
+          .where('linkedUserIds', arrayContains: id)
+          .get()),
     );
 
-    // Flatten the results into a single list
-    return snapshots.expand((snapshot) => snapshot.docs).toList();
+    final allDocs = snapshots.expand((s) => s.docs).toList();
+
+    // Deduplicate by document ID
+    final uniqueDocs = {
+      for (var doc in allDocs) doc.id: doc
+    }.values.toList();
+
+    return uniqueDocs;
   }
 
+  // Future<List<QueryDocumentSnapshot>> getAppointments(List<String> linkedUserIds) async {
+  //   if (linkedUserIds.isEmpty) {
+  //     print("DEBUG: No linked users found. Skipping database query.");
+  //     return [];
+  //   }
+  //
+  //   List<QuerySnapshot> snapshots = await Future.wait(
+  //     linkedUserIds.map((id) {
+  //       return firestore
+  //           .collection('appointments')
+  //           .where('linkedUserIds', arrayContains: id)
+  //           .get();
+  //     }),
+  //   );
+  //
+  //   // Flatten the results into a single list
+  //   return snapshots.expand((snapshot) => snapshot.docs).toList();
+  // }
 
   Future<List<QueryDocumentSnapshot>> getDoctors(List<String> linkedUserIds) async {
-    if (linkedUserIds.isEmpty) {
-      print("DEBUG: No linked users found. Skipping database query.");
-      return [];
-    }
+    if (linkedUserIds.isEmpty) return [];
 
     List<QuerySnapshot> snapshots = await Future.wait(
-      linkedUserIds.map((id) {
-        return firestore
-            .collection('doctors')
-            .where('linkedUserIds', arrayContains: id)
-            .get();
-      }),
+      linkedUserIds.map((id) => firestore
+          .collection('doctors')
+          .where('linkedUserIds', arrayContains: id)
+          .get()),
     );
 
-    return snapshots.expand((snapshot) => snapshot.docs).toList();
+    final allDocs = snapshots.expand((s) => s.docs).toList();
+
+    // Deduplicate by document ID
+    final uniqueDocs = {
+      for (var doc in allDocs) doc.id: doc
+    }.values.toList();
+
+    return uniqueDocs;
   }
+
+  // Future<List<QueryDocumentSnapshot>> getDoctors(List<String> linkedUserIds) async {
+  //   if (linkedUserIds.isEmpty) {
+  //     print("DEBUG: No linked users found. Skipping database query.");
+  //     return [];
+  //   }
+  //
+  //   List<QuerySnapshot> snapshots = await Future.wait(
+  //     linkedUserIds.map((id) {
+  //       return firestore
+  //           .collection('doctors')
+  //           .where('linkedUserIds', arrayContains: id)
+  //           .get();
+  //     }),
+  //   );
+  //
+  //   return snapshots.expand((snapshot) => snapshot.docs).toList();
+  // }
 
 
   Future<bool> isEmergencyContact() async {
