@@ -12,6 +12,7 @@ import 'package:health_buddy/pages/profile_page.dart';
 import 'package:health_buddy/pages/setting/settings_page.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,12 +28,29 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, bool> _medTakenStatus = {};
   final FirestoreService _firestoreService = FirestoreService();
   bool? _isEmergencyContact;
+  Timer? _medCheckTimer;
 
   @override
   void initState() {
     super.initState();
     loadTakenMedsForToday();
     _checkEmergencyContactStatus();
+    fetchAndCheckMissedDoses();
+    startPeriodicCheck();
+  }
+
+  void startPeriodicCheck() {
+    fetchAndCheckMissedDoses();
+
+    _medCheckTimer = Timer.periodic(Duration(minutes: 15), (timer) {
+      fetchAndCheckMissedDoses();
+    });
+  }
+
+  @override
+  void dispose() {
+    _medCheckTimer?.cancel();
+    super.dispose();
   }
 
   void _onNavItemTapped(int index) {
@@ -58,6 +76,144 @@ class _HomeScreenState extends State<HomeScreen> {
       print(
           "⛔ No medication notifications scheduled for emergency contact user: ${user.uid}");
     }
+  }
+
+  Stream<List<QueryDocumentSnapshot>> fetchMedsCollectionNotifi() async* {
+    final currentUserPhone = FirebaseAuth.instance.currentUser?.phoneNumber;
+    if (currentUserPhone == null) {
+      yield [];
+      return;
+    }
+
+    final emergencyContactDoc = await FirebaseFirestore.instance
+        .collection('emergencyContacts')
+        .doc(currentUserPhone)
+        .get();
+
+    if (!emergencyContactDoc.exists) {
+      yield [];
+      return;
+    }
+
+    final linkedPatientId = emergencyContactDoc.data()?['linkedPatientId'];
+    if (linkedPatientId == null) {
+      yield [];
+      return;
+    }
+
+    yield* FirebaseFirestore.instance
+        .collection('meds')
+        .where('linkedUserIds', arrayContains: linkedPatientId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs);
+  }
+
+  void fetchAndCheckMissedDoses() async {
+    final medsSnapshot = await fetchMedsCollectionAll().first;
+    await checkUnTakenDoses(medsSnapshot);
+  }
+
+  Future<void> checkUnTakenDoses(List<QueryDocumentSnapshot> meds) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final currentUserUid = currentUser.uid;
+
+    // Fetch phone from the users collection using UID
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUserUid)
+        .get();
+
+    if (!userDoc.exists) return;
+
+    final currentUserPhone = userDoc.data()?['phone'];
+    
+
+    if (currentUserPhone == null) return;
+
+    // Use phone number to access emergencyContacts collection
+    final emergencyContactDoc = await FirebaseFirestore.instance
+        .collection('emergencyContacts')
+        .doc(currentUserPhone)
+        .get();
+
+    if (!emergencyContactDoc.exists) return;
+
+    final linkedPatientId = emergencyContactDoc.data()?['linkedPatientId'];
+   
+    if (linkedPatientId == null) return;
+
+    final today = DateTime.now();
+    final todayName = getDayName(today.weekday);
+    
+    
+    
+    for (var medDoc in meds) {
+      
+      var medData = medDoc.data() as Map<String, dynamic>;
+      String frequency = (medData['frequency'] ?? '').toString().toLowerCase();
+      String medId = medDoc.id;
+
+      List<String> doseKeys = [];
+      List<String> reminderTimes =
+          List<String>.from(medData['reminderTimes'] ?? []);
+          
+
+      if (frequency == 'once a day') {
+        doseKeys = ['${medId}_1'];
+      } else if (frequency == 'twice a day') {
+        doseKeys = ['${medId}_1', '${medId}_2'];
+      } else if (frequency == '3 times a day') {
+        doseKeys = ['${medId}_1', '${medId}_2', '${medId}_3'];
+      } else if (frequency == 'once a week') {
+        if (medData['onceAWeekDay'] == todayName) {
+          doseKeys = [medId];
+        }
+      } else if (medData.containsKey('specificDays')) {
+        List<dynamic> specificDays = medData['specificDays'];
+        if (specificDays.contains(todayName)) {
+          doseKeys = [medId];
+        }
+      } else {
+        doseKeys = [medId];
+      }
+    
+
+      for (var i = 0; i < doseKeys.length; i++) {
+        final doseKey = doseKeys[i];
+        print("🔍 Dose key $doseKey status: ${_medTakenStatus[doseKey]}");
+
+        if (!(_medTakenStatus[doseKey] ?? false)) {
+          if (i < reminderTimes.length) {
+            final reminderTimeStr = reminderTimes[i];
+            final reminderTime = parseReminderTimeToDateTime(reminderTimeStr);
+            final medName = medData['name'] ?? "Medication";
+
+            if (DateTime.now()
+                .isAfter(reminderTime.add(const Duration(minutes: 15)))) {
+              await NotificationService.checkAndNotifyUnTakenDose(
+                  doseKey, linkedPatientId,medName);
+              print("🚨 Missed dose notification sent for $doseKey");
+            }
+          }
+        }
+      }
+    }
+  }
+
+  DateTime parseReminderTimeToDateTime(String timeStr) {
+    final now = DateTime.now();
+    final format = DateFormat("hh:mm a"); // 12-hour format with AM/PM
+    final time = format.parse(timeStr);
+
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+    );
   }
 
   Widget _buildUserName() {

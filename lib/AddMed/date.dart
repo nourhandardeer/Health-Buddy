@@ -149,9 +149,9 @@ class _DatePageState extends State<DatePage> {
             ttsMessage:
                 "It's time to take your medicine: please take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
             startTime: scheduledTime, // the actual scheduled DateTime
-            //repeatCount: 36,
-            repeatCount: 3,
-            interval: Duration(minutes: 1),
+            
+            repeatCount: 24,
+            interval: Duration(minutes: 15),
           );
         }
         dataToSave['reminderTimes'] = reminderTimes;

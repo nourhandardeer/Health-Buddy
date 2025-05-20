@@ -84,7 +84,7 @@ class Auth {
     
     await NotificationService.cancelAllNotifications();
     print("🔔 Attempting to cancel tracked notifications...");
-    //await NotificationService.cancelTrackedNotifications();
+    await NotificationService.cancelTrackedNotifications();
   
     await _firebaseAuth.signOut();
     print("👤 User signed out and all notifications cleared.");

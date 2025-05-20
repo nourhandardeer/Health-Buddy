@@ -11,6 +11,7 @@ import '../../services/firestore_service.dart';
 import 'ChangePasswordPage.dart';
 import 'SetPinPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:health_buddy/auth.dart';
 
 
 class SettingsPage extends StatefulWidget  {
@@ -52,6 +53,8 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     await prefs.setBool('notifications_enabled', value);
   }
+
+  final Auth auth = Auth();
 
 
   @override
@@ -202,18 +205,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
           // Logout Button
           ListTile(
-            leading: Icon(Icons.logout, color: Colors.red),
-            title: Text('Logout'),
-            onTap: () async {
-              // Sign out from Firebase
-              await FirebaseAuth.instance.signOut();
-              // Navigate to the login screen after signing out
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => SplashScreen()),
-              );
-            },
-          ),
+  leading: Icon(Icons.logout, color: Colors.red),
+  title: Text('Logout'),
+  onTap: () async {
+    await auth.signOut();  // call your custom function here
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => SplashScreen()),
+    );
+  },
+),
+
         ],
       ),
 
