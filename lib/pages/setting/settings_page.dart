@@ -7,11 +7,55 @@ import 'package:health_buddy/pages/splash_screen.dart';
 import 'package:health_buddy/pages/EmergencyContactPage.dart';
 import 'package:health_buddy/services/theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'ChangePasswordPage.dart'; // Import the ChangePasswordPage
-import 'SetPinPage.dart'; // Import the SetPinPage (you can create this page for setting the PIN)
+import '../../services/firestore_service.dart';
+import 'ChangePasswordPage.dart';
+import 'SetPinPage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:health_buddy/auth.dart';
 
-class SettingsPage extends StatelessWidget {
+
+class SettingsPage extends StatefulWidget  {
   const SettingsPage({super.key});
+
+   @override
+  _SettingsPageState createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool _notificationsEnabled = true;
+  bool _isEmergency = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationSetting();
+    _checkIfEmergencyContact();
+  }
+
+  Future<void> _loadNotificationSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+    });
+  }
+  Future<void> _checkIfEmergencyContact() async {
+    bool isEmergency = await FirestoreService().isEmergencyContact();
+    setState(() {
+      _isEmergency = isEmergency;
+
+    });
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = value;
+    });
+    await prefs.setBool('notifications_enabled', value);
+  }
+
+  final Auth auth = Auth();
+
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +88,12 @@ class SettingsPage extends StatelessWidget {
             leading: Icon(Icons.notifications, color: Colors.orange),
             title: Text('Notifications'),
             subtitle: Text('Manage alerts and reminders'),
-            trailing: Switch(value: true, onChanged: (bool value) {}),
+            trailing: Switch(
+              value: _notificationsEnabled,
+              onChanged: (bool value) {
+                _toggleNotifications(value);
+              },
+            ),
           ),
           Divider(),
 
@@ -55,11 +104,30 @@ class SettingsPage extends StatelessWidget {
             subtitle: Text('Manage emergency numbers'),
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => EmergencyContactPage()));
-            },
+              if (_isEmergency) {
+                showDialog(
+                  context: context,
+                  builder: (context) =>
+                      AlertDialog(
+                        title: Text('Action not allowed'),
+                        content: Text(
+                            'You cannot add emergency contacts because you are already an emergency contact.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('OK'),
+                          ),
+                        ],
+                      ),
+                );
+              } else {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => EmergencyContactPage()));
+              };
+            }
+
           ),
           Divider(),
 
@@ -137,18 +205,18 @@ class SettingsPage extends StatelessWidget {
 
           // Logout Button
           ListTile(
-            leading: Icon(Icons.logout, color: Colors.red),
-            title: Text('Logout'),
-            onTap: () async {
-              // Sign out from Firebase
-              await FirebaseAuth.instance.signOut();
-              // Navigate to the login screen after signing out
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => SplashScreen()),
-              );
-            },
-          ),
+  leading: Icon(Icons.logout, color: Colors.red),
+  title: Text('Logout'),
+  onTap: () async {
+    await auth.signOut();  // call your custom function here
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => SplashScreen()),
+    );
+  },
+),
+
         ],
       ),
 
@@ -156,47 +224,89 @@ class SettingsPage extends StatelessWidget {
   }
   Future<void> deleteAccountAndData(String password) async {
     final user = FirebaseAuth.instance.currentUser;
-
     if (user == null) return;
 
     final userId = user.uid;
 
     try {
-      // 🔐 Re-authenticate user before deletion (required by Firebase)
+
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: password,
       );
       await user.reauthenticateWithCredential(credential);
 
-      // 🗑️ 1. Delete Firestore user data
-      await FirebaseFirestore.instance.collection('users').doc(userId).delete();
 
-      // 🗑️ 2. Delete subcollections like emergencyContacts or medications
-      final subcollections = ['emergencyContacts', 'medications'];
-      for (final sub in subcollections) {
-        final subDocs = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .collection(sub)
+      final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
+      final userDoc = await userDocRef.get();
+      final userData = userDoc.data();
+      final phone = userData?['phone'];
+
+
+      if (phone != null && phone.toString().isNotEmpty) {
+        final contactsQuery = await userDocRef
+            .collection('emergencyContacts')
+            .where('phone', isEqualTo: phone)
             .get();
 
-        for (final doc in subDocs.docs) {
+        for (final doc in contactsQuery.docs) {
           await doc.reference.delete();
         }
       }
 
-      // 🗑️ 3. Delete from emergency_contacts if phone is listed
-      final phone = user.phoneNumber; // Or retrieve from Firestore
-      if (phone != null && phone.isNotEmpty) {
-        final emergencyRef = FirebaseFirestore.instance.collection('emergency_contacts').doc(phone);
+
+      final medsTakenDocs = await userDocRef.collection('medsTaken').get();
+      for (final doc in medsTakenDocs.docs) {
+        final data = doc.data();
+        final List<dynamic>? linkedUserIds = data['linkedUserIds'];
+
+        if (linkedUserIds != null && linkedUserIds.contains(userId)) {
+          await doc.reference.update({
+            'linkedUserIds': FieldValue.arrayRemove([userId]),
+          });
+
+          final updatedDoc = await doc.reference.get();
+          final updatedLinkedUserIds = updatedDoc.data()?['linkedUserIds'];
+          if (updatedLinkedUserIds == null || updatedLinkedUserIds.isEmpty) {
+            await doc.reference.delete();
+          }
+        } else {
+          await doc.reference.delete();
+        }
+      }
+
+
+      await userDocRef.delete();
+
+      if (phone != null && phone.toString().isNotEmpty) {
+        final emergencyRef = FirebaseFirestore.instance.collection('emergencyContacts').doc(phone.toString());
         final emergencyDoc = await emergencyRef.get();
         if (emergencyDoc.exists) {
           await emergencyRef.delete();
         }
       }
 
-      // 🔥 4. Delete from Firebase Auth
+      final topLevelCollections = ['meds', 'doctors', 'appointments'];
+      for (final collectionName in topLevelCollections) {
+        final querySnapshot = await FirebaseFirestore.instance.collection(collectionName).get();
+        for (final doc in querySnapshot.docs) {
+          final data = doc.data();
+          final List<dynamic>? linkedUserIds = data['linkedUserIds'];
+
+          if (linkedUserIds != null && linkedUserIds.contains(userId)) {
+            await doc.reference.update({
+              'linkedUserIds': FieldValue.arrayRemove([userId]),
+            });
+
+            final updatedDoc = await doc.reference.get();
+            final updatedLinkedUserIds = updatedDoc.data()?['linkedUserIds'];
+            if (updatedLinkedUserIds == null || updatedLinkedUserIds.isEmpty) {
+              await doc.reference.delete();
+            }
+          }
+        }
+      }
+
       await user.delete();
 
     } on FirebaseAuthException catch (e) {

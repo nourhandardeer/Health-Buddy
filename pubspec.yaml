@@ -44,6 +44,8 @@ dependencies:
   font_awesome_flutter: ^10.8.0
   cloudinary_flutter: ^1.0.0
   cloudinary_url_gen: ^1.0.0
+  flutter_animate: ^4.3.0
+  flutter_screenutil: ^5.9.0
 
   
 
@@ -65,8 +67,13 @@ flutter:
     - images/logo2.jpeg
     - images/syringe.png
     - images/user.png
-    - assets/
-    - assets/
+    - assets/medicines.json
+  fonts:
+    - family: PlayfairDisplay
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay-VariableFont_wght.ttf
+        - asset: assets/fonts/PlayfairDisplay-Italic-VariableFont_wght.ttf
+          style: italic
 
 flutter_launcher_icons:
   android: true

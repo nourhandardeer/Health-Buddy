@@ -73,9 +73,10 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text('Welcome back',
-                  style: TextStyle(fontSize: 29, color: Colors.blue.shade900)),
-              Text('Login',
-                  style: TextStyle(fontSize: 19, color: Colors.blue.shade900)),
+                  style: TextStyle(
+                      fontSize: 29,
+                      color: Colors.blue.shade900,
+                      fontWeight: FontWeight.bold)),
               Image.asset('images/logo2.jpeg', width: 200, height: 200),
               Padding(
                 padding:
@@ -87,6 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Email',
                     labelStyle: TextStyle(fontSize: 18, color: Colors.black),
                     hintText: 'Please enter your email address',
+                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -105,6 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Password',
                     labelStyle: TextStyle(fontSize: 18, color: Colors.black),
                     hintText: 'Enter your Password',
+                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

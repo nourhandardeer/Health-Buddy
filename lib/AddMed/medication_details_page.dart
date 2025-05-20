@@ -7,7 +7,8 @@ import 'UnitSelectionPage.dart';
 class MedicationDetailsPage extends StatefulWidget {
   final String medId;
 
-  const MedicationDetailsPage({Key? key, required this.medId}) : super(key: key);
+  const MedicationDetailsPage({Key? key, required this.medId})
+      : super(key: key);
 
   @override
   _MedicationDetailsPageState createState() => _MedicationDetailsPageState();
@@ -82,7 +83,8 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
       initialTime: selectedTime,
     ).then((pickedTime) {
       if (pickedTime != null) {
-        final hour = pickedTime.hourOfPeriod == 0 ? 12 : pickedTime.hourOfPeriod;
+        final hour =
+            pickedTime.hourOfPeriod == 0 ? 12 : pickedTime.hourOfPeriod;
         final minute = pickedTime.minute.toString().padLeft(2, '0');
         final period = pickedTime.period == DayPeriod.am ? 'AM' : 'PM';
         final formattedTime = "$hour:$minute $period";
@@ -99,7 +101,8 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
           title: const Text("Enter Custom Intake Advice"),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(hintText: "Write your intake advice..."),
+            decoration:
+                const InputDecoration(hintText: "Write your intake advice..."),
           ),
           actions: [
             TextButton(
@@ -129,7 +132,8 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
       builder: (context) {
         return AlertDialog(
           title: const Text("Delete Medication"),
-          content: const Text("Are you sure you want to delete this medication?"),
+          content:
+              const Text("Are you sure you want to delete this medication?"),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -223,19 +227,23 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(appBar: _buildAppBar(context), body: const Center(child: CircularProgressIndicator()));
+      return Scaffold(
+          appBar: _buildAppBar(context),
+          body: const Center(child: CircularProgressIndicator()));
     }
 
     if (medData == null) {
       return Scaffold(
         appBar: _buildAppBar(context),
-        body: const Center(child: Text("Medication not found.", style: TextStyle(fontSize: 18, color: Colors.grey))),
+        body: const Center(
+            child: Text("Medication not found.",
+                style: TextStyle(fontSize: 18, color: Colors.grey))),
       );
     }
 
     String frequency = medData!['frequency'] ?? '';
     bool isTwiceADay = frequency == "Twice a day";
-    int currentInventory = int.tryParse(medData!['currentInventory']?.toString() ?? '0') ?? 0;
+    int currentInventory = (medData!['currentInventory'] as num?)?.toInt() ?? 0;
     String intakeAdvice = medData!['intakeAdvice'] ?? 'None';
     TextEditingController intakeController = TextEditingController(
       text: medData!['customIntakeAdvice'] ?? '',
@@ -249,22 +257,32 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSection(icon: Icons.calendar_today, title: "Frequency", value: frequency, field: "frequency"),
             _buildSection(
-              icon: Icons.alarm,
-              title: "Reminder Time 1",
-              value: medData!['reminderTime1'] ?? 'N/A',
-              field: "reminderTime1",
-              onTap: () => _showTimePicker("reminderTime1"),
-            ),
-            if (isTwiceADay)
+                icon: Icons.calendar_today,
+                title: "Frequency",
+                value: frequency,
+                field: "frequency"),
+
+            for (int i = 0; i < (medData!['reminderTimes']?.length ?? 0); i++)
               _buildSection(
                 icon: Icons.alarm,
-                title: "Reminder Time 2",
-                value: medData!['reminderTime2'] ?? 'N/A',
-                field: "reminderTime2",
-                onTap: () => _showTimePicker("reminderTime2"),
+                title: "Reminder Time ${i + 1}",
+                value: medData!['reminderTimes'][i] ?? 'N/A',
+                field: "reminderTime${i + 1}",
+                onTap: () => _showTimePicker("reminderTime${i + 1}"),
               ),
+
+            // Adding Reminder Time for Twice a Day if applicable
+            if (isTwiceADay && (medData!['reminderTimes']?.length ?? 0) < 2)
+              _buildSection(
+                icon: Icons.alarm,
+                title: "Reminder Time ${medData!['reminderTimes']?.length + 1}",
+                value: 'N/A', // Default to 'N/A' or you can set a default time
+                field: "reminderTime${medData!['reminderTimes']?.length + 1}",
+                onTap: () => _showTimePicker(
+                    "reminderTime${medData!['reminderTimes']?.length + 1}"),
+              ),
+
             _buildInventoryControl(
               icon: Icons.inventory,
               title: "Current Inventory",
@@ -293,7 +311,9 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
             _buildSection(
               icon: Icons.fastfood,
               title: "Intake Advice",
-              value: intakeAdvice == "Custom" ? intakeController.text : intakeAdvice,
+              value: intakeAdvice == "Custom"
+                  ? intakeController.text
+                  : intakeAdvice,
               field: "intakeAdvice",
               onTap: () {
                 if (intakeAdvice == "Custom") {
