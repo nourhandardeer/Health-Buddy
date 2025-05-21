@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import '../services/UserLocationHolder.dart';
+
 class EmergencyContactHelper {
-  static void EmergencyContactDialog(BuildContext context,
-      Function(Map<String, String>) onContactAdded,) {
+  static Future<void> EmergencyContactDialog(
+    BuildContext context,
+    Function(Map<String, String>) onContactAdded,
+  ) {
     TextEditingController nameController = TextEditingController();
     TextEditingController phoneController = TextEditingController();
 
-    showDialog(
+    return showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -22,7 +27,6 @@ class EmergencyContactHelper {
                 decoration: InputDecoration(labelText: "Phone"),
                 keyboardType: TextInputType.phone,
               ),
-
             ],
           ),
           actions: [
@@ -30,17 +34,58 @@ class EmergencyContactHelper {
               onPressed: () => Navigator.pop(context),
               child: Text("Cancel"),
             ),
-            TextButton(
-              onPressed: () {
-                Map<String, String> newContact = {
-                  "name": nameController.text,
-                  "phone": phoneController.text,
-                };
-                onContactAdded(newContact);
-                Navigator.pop(context);
-              },
-              child: Text("Add"),
-            ),
+           TextButton(
+  onPressed: () async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please enable location services")),
+      );
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Location permission denied")),
+        );
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Location permission permanently denied")),
+      );
+      return;
+    }
+
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+    Map<String, String> newContact = {
+  "name": nameController.text,
+  "phone": phoneController.text,
+  "latitude": UserLocationHolder.latitude?.toString() ?? "0",
+  "longitude": UserLocationHolder.longitude?.toString() ?? "0",
+};
+
+
+      onContactAdded(newContact);
+      Navigator.pop(context);
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to get location")),
+      );
+    }
+  },
+  child: Text("Add"),
+),
+
           ],
         );
       },
