@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/locationHelper.dart';
+import '../services/UserLocationHolder.dart';
 
 class RefillDetailsPage extends StatefulWidget {
   final Map<String, dynamic> medData;
@@ -30,6 +31,8 @@ class _RefillDetailsPageState extends State<RefillDetailsPage> {
       setState(() {
         _currentPosition = position;
       });
+          UserLocationHolder.setLocation(position.latitude, position.longitude);
+
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to get location")),
