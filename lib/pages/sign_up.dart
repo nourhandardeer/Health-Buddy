@@ -239,9 +239,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ?.copyWith(
                               color: Colors.blue.shade900,
                               fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Image.asset('images/logo2.jpeg', width: 200, height: 200),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+                  Image.asset('images/MedTrack -logo.png', width: 150, height: 150),
+                  const SizedBox(height: 20),
                   _buildTextFormField(
                     firstNameController,
                     'First Name',

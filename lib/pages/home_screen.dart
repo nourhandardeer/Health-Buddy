@@ -16,7 +16,7 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center, // Center vertically
           crossAxisAlignment: CrossAxisAlignment.center, // Center horizontally
           children: [
-            Image.asset('images/logo2.jpeg', width: 220, height: 220), // Logo
+            Image.asset('images/MedTrack -name.png', width: 450, height: 450), // Logo
 
             SizedBox(height: 80), // Spacing
             ElevatedButton(
