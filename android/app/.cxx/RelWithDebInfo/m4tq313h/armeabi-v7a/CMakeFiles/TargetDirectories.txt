@@ -1,0 +1,2 @@
+C:/Users/Elaf/Health-Buddy/android/app/.cxx/RelWithDebInfo/m4tq313h/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/Elaf/Health-Buddy/android/app/.cxx/RelWithDebInfo/m4tq313h/armeabi-v7a/CMakeFiles/rebuild_cache.dir

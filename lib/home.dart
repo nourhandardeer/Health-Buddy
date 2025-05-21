@@ -11,7 +11,7 @@ import 'package:health_buddy/NavigationBar/refills_page.dart';
 import 'package:health_buddy/pages/profile_page.dart';
 import 'package:health_buddy/pages/setting/settings_page.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+//import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -439,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return const Center(child: Text("Error loading appointments"));
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text("No appointments found"));
+          return const Center(child: Text("No appointments for today"));
         }
 
         final appointments = snapshot.data!;
