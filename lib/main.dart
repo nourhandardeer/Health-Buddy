@@ -73,7 +73,7 @@ class MyApp extends StatelessWidget {
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          builder: DevicePreview.appBuilder,
+          //builder: DevicePreview.appBuilder,
           themeMode:
               themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           theme: ThemeData(
