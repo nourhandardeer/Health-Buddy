@@ -205,12 +205,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     ),
             ),
             SizedBox(height: 8),
-            Text("Tap image to upload"),
+            Text("Add Profile Photo"),
             SizedBox(height: 20),
-            TextField(
+              TextField(
               controller: _ageController,
               decoration: InputDecoration(labelText: "Age"),
-              keyboardType: TextInputType.number,
+              maxLines: 3,
             ),
             TextField(
               controller: _illnessesController,

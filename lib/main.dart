@@ -17,6 +17,7 @@ import 'package:cloudinary_flutter/image/cld_image.dart';
 import 'package:cloudinary_flutter/cloudinary_context.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AndroidAlarmManager.initialize();
@@ -58,6 +59,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  
   const MyApp({super.key});
 
   @override
@@ -71,7 +73,7 @@ class MyApp extends StatelessWidget {
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          builder: DevicePreview.appBuilder,
+          //builder: DevicePreview.appBuilder,
           themeMode:
               themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           theme: ThemeData(
