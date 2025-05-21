@@ -46,6 +46,7 @@ dependencies:
   cloudinary_url_gen: ^1.0.0
   flutter_animate: ^4.3.0
   flutter_screenutil: ^5.9.0
+  video_player: ^2.9.5
 
   
 
@@ -68,6 +69,9 @@ flutter:
     - images/syringe.png
     - images/user.png
     - assets/medicines.json
+    - images/MedTrack -logo.png
+    - images/MedTrack -name.png
+    - images/MedTrack-icon.png
   fonts:
     - family: PlayfairDisplay
       fonts:
@@ -78,7 +82,7 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "images/logo2.jpeg"
+  image_path: "images/MedTrack-icon.png"
 
     
     #  - assets/sounds/notification_sound.mp3

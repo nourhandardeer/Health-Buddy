@@ -77,7 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       fontSize: 29,
                       color: Colors.blue.shade900,
                       fontWeight: FontWeight.bold)),
-              Image.asset('images/logo2.jpeg', width: 200, height: 200),
+              const SizedBox(height: 20),
+              Image.asset('images/MedTrack -logo.png', width: 150, height: 150),
+              const SizedBox(height: 20),
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

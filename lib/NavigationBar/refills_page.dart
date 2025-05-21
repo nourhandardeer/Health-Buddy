@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:health_buddy/Refills/refill_details.dart';
 import 'package:health_buddy/services/notification_service.dart'; // Import NotificationService
 import 'package:intl/intl.dart';
+import '../services/UserLocationHolder.dart'; // تأكد ان المسار صح
 
 class RefillsPage extends StatefulWidget {
   const RefillsPage({Key? key}) : super(key: key);
@@ -89,14 +90,7 @@ class _RefillsPageState extends State<RefillsPage> {
                     ? (reminderTimes[0] as String)
                     : "Not set";
 
-            if (reminderTimes != null && reminderTimes.isNotEmpty) {
-              for (var time in reminderTimes) {
-                final String timeStr = time as String;
-                DateTime scheduledTime = _convertTimeToDateTime(timeStr);
-                // Schedule each reminder here
-              }
-            }
-
+            // Notifications (مش مغيره هنا)
             if (inventory > 0 &&
                 inventory <= remindMeWhen &&
                 !_notifiedMeds.contains(medName)) {
@@ -144,7 +138,6 @@ class _RefillsPageState extends State<RefillsPage> {
                 child: ListTile(
                   leading:
                       Image.asset("images/drugs.png", width: 32, height: 32),
-                //  trailing: const Icon(Icons.notifications, size: 30),
                   title: Text(
                     medName,
                     style: const TextStyle(
@@ -169,10 +162,19 @@ class _RefillsPageState extends State<RefillsPage> {
                     ],
                   ),
                   onTap: () {
+                    // نسخ البيانات واضافة الموقع من UserLocationHolder
+                    Map<String, dynamic> medDataWithLocation =
+                        Map<String, dynamic>.from(data);
+                    medDataWithLocation['latitude'] =
+                        UserLocationHolder.latitude ?? 0;
+                    medDataWithLocation['longitude'] =
+                        UserLocationHolder.longitude ?? 0;
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => RefillDetailsPage(medData: data),
+                        builder: (context) =>
+                            RefillDetailsPage(medData: medDataWithLocation),
                       ),
                     );
                   },
