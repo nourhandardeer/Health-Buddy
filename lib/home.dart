@@ -884,6 +884,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                           "Dosage: ${medData['dosage']} ${medData['unit']}"),
                                       const SizedBox(height: 8),
                                       Text(
+                                          "Intake Advice: ${medData['intakeAdvice']} "),
+                                      const SizedBox(height: 8),
+                                      Text(
                                           "Frequency: ${medData['frequency']}"),
                                       const SizedBox(height: 8),
                                       if (medData['notes'] != null &&

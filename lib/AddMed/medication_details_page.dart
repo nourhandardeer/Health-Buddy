@@ -76,19 +76,48 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
     }
   }
 
-  void _showTimePicker(String field) {
+  Future<void> _updateReminderTime(int index, String newTime) async {
+    try {
+      List<dynamic> times = List.from(medData?['reminderTimes'] ?? []);
+      if (index >= 0 && index < times.length) {
+        times[index] = newTime;
+        await FirebaseFirestore.instance
+            .collection('meds')
+            .doc(widget.medId)
+            .update({'reminderTimes': times});
+        setState(() {
+          medData?['reminderTimes'] = times;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Reminder time updated successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error updating reminder time: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to update reminder time."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showTimePickerForReminder(int index) {
     TimeOfDay selectedTime = TimeOfDay(hour: 0, minute: 0);
     showTimePicker(
       context: context,
       initialTime: selectedTime,
     ).then((pickedTime) {
       if (pickedTime != null) {
-        final hour =
-            pickedTime.hourOfPeriod == 0 ? 12 : pickedTime.hourOfPeriod;
+        final hour = pickedTime.hourOfPeriod == 0 ? 12 : pickedTime.hourOfPeriod;
         final minute = pickedTime.minute.toString().padLeft(2, '0');
         final period = pickedTime.period == DayPeriod.am ? 'AM' : 'PM';
         final formattedTime = "$hour:$minute $period";
-        _updateData(field, formattedTime);
+        _updateReminderTime(index, formattedTime);
       }
     });
   }
@@ -243,7 +272,7 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
 
     String frequency = medData!['frequency'] ?? '';
     bool isTwiceADay = frequency == "Twice a day";
-    int currentInventory = (medData!['currentInventory'] as num?)?.toInt() ?? 0;
+    int currentInventory = int.tryParse(medData!['currentInventory'].toString()) ?? 0;
     String intakeAdvice = medData!['intakeAdvice'] ?? 'None';
     TextEditingController intakeController = TextEditingController(
       text: medData!['customIntakeAdvice'] ?? '',
@@ -258,29 +287,44 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSection(
-                icon: Icons.calendar_today,
-                title: "Frequency",
-                value: frequency,
-                field: "frequency"),
+              icon: Icons.calendar_today,
+              title: "Frequency",
+              value: frequency,
+              field: "frequency",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FrequencySelectionPage(
+                      initialFrequency: frequency,
+                      onSave: (Map<String, dynamic> data) async {
+                        await _updateData("frequency", data['frequency']);
+                        if (data.containsKey('specificDays')) {
+                          await _updateData("specificDays", data['specificDays']);
+                        }
+                      },
+                    ),
+                  ),
+                );
+              },
+
+            ),
 
             for (int i = 0; i < (medData!['reminderTimes']?.length ?? 0); i++)
               _buildSection(
                 icon: Icons.alarm,
-                title: "Reminder Time ${i + 1}",
+                title: "Reminder Time ",
                 value: medData!['reminderTimes'][i] ?? 'N/A',
-                field: "reminderTime${i + 1}",
-                onTap: () => _showTimePicker("reminderTime${i + 1}"),
+                field: "reminderTime\${i + 1}",
+                onTap: () => _showTimePickerForReminder(i),
               ),
 
-            // Adding Reminder Time for Twice a Day if applicable
             if (isTwiceADay && (medData!['reminderTimes']?.length ?? 0) < 2)
               _buildSection(
                 icon: Icons.alarm,
-                title: "Reminder Time ${medData!['reminderTimes']?.length + 1}",
-                value: 'N/A', // Default to 'N/A' or you can set a default time
-                field: "reminderTime${medData!['reminderTimes']?.length + 1}",
-                onTap: () => _showTimePicker(
-                    "reminderTime${medData!['reminderTimes']?.length + 1}"),
+                title: "Reminder Time \${medData!['reminderTimes']?.length + 1}",
+                value: 'N/A',
+                field: "reminderTime\${medData!['reminderTimes']?.length + 1}",
               ),
 
             _buildInventoryControl(
@@ -308,19 +352,41 @@ class _MedicationDetailsPageState extends State<MedicationDetailsPage> {
                 );
               },
             ),
-            _buildSection(
-              icon: Icons.fastfood,
-              title: "Intake Advice",
-              value: intakeAdvice == "Custom"
-                  ? intakeController.text
-                  : intakeAdvice,
-              field: "intakeAdvice",
-              onTap: () {
-                if (intakeAdvice == "Custom") {
-                  _showCustomInputDialog(intakeController);
-                }
-              },
+            Card(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.blueAccent,
+                  child: Icon(Icons.fastfood, color: Colors.white),
+                ),
+                title: const Text("Intake Advice"),
+                subtitle: DropdownButton<String>(
+                  value: intakeAdvice == "Custom" ? "Custom entry" : intakeAdvice,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  items: [
+                    "None",
+                    "Before meal",
+                    "With meal",
+                    "After meal",
+                    "Custom entry",
+                  ].map((option) {
+                    return DropdownMenuItem<String>(
+                      value: option,
+                      child: Text(option),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value == "Custom entry") {
+                      _showCustomInputDialog(intakeController);
+                    } else {
+                      _updateData("intakeAdvice", value!);
+                    }
+                  },
+                ),
+              ),
             ),
+
           ],
         ),
       ),

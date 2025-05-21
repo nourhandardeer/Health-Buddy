@@ -122,7 +122,7 @@ class _FrequencySelectionPageState extends State<FrequencySelectionPage> {
             _buildOption("twice a day"),
             _buildOption("3 times a day"),
             _buildOption("Specific days of the week"),
-            _buildOption("On demand (no reminder needed)"),
+            _buildOption("On demand "),
           ],
         ),
       ),
