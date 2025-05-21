@@ -30,10 +30,6 @@ class EmergencyContactHelper {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel"),
-            ),
            TextButton(
   onPressed: () async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -66,13 +62,14 @@ class EmergencyContactHelper {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
 
-    Map<String, String> newContact = {
-  "name": nameController.text,
-  "phone": phoneController.text,
-  "latitude": UserLocationHolder.latitude?.toString() ?? "0",
-  "longitude": UserLocationHolder.longitude?.toString() ?? "0",
-};
+      UserLocationHolder.setLocation(position.latitude, position.longitude);
 
+      Map<String, String> newContact = {
+        "name": nameController.text,
+        "phone": phoneController.text,
+        "latitude": position.latitude.toString(),
+        "longitude": position.longitude.toString(),
+      };
 
       onContactAdded(newContact);
       Navigator.pop(context);
@@ -85,6 +82,7 @@ class EmergencyContactHelper {
   },
   child: Text("Add"),
 ),
+
 
           ],
         );
