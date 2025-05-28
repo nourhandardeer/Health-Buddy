@@ -122,11 +122,15 @@ class _AddAppointmentState extends State<AddAppointment> {
         id: appointmentDateTime.millisecondsSinceEpoch
             .remainder(100000), // unique-ish ID
         title: 'Appointment Reminder',
-        body:
+        bodyEn:
             'You have an appointment with Dr. ${doctorNameController.text} at ${selectedTime!.format(context)}',
+        bodyAr:
+            'لديك موعد مع الدكتور ${doctorNameController.text} في الساعة ${selectedTime!.format(context)}',
         scheduledTime: reminderTime,
-        ttsMessage:
+        ttsMessageEn:
             'Reminder! Appointment with Dr. ${doctorNameController.text} at ${selectedTime!.format(context)}.',
+        ttsMessageAr:
+            'تذكير! لديك موعد مع الدكتور ${doctorNameController.text} في الساعة ${selectedTime!.format(context)}.',
       );
       print('Appointment Notification scheduled for $reminderTime');
 

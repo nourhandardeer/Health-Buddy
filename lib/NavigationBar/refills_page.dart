@@ -103,9 +103,12 @@ class _RefillsPageState extends State<RefillsPage> {
               NotificationService.scheduleNotification(
                 id: medName.hashCode ^ notificationTime.hashCode,
                 title: "Refill Reminder: $medName",
-                body: "Your medication inventory is low! Please refill soon.",
-                ttsMessage:
+                bodyEn: "Your medication inventory is low! Please refill soon.",
+                bodyAr: "مخزون دوائك منخفض! يرجى إعادة التعبئة قريبًا.",
+                ttsMessageEn:
                     "Your medication $medName inventory is low! Please refill soon.",
+                ttsMessageAr:
+                    "مخزون دوائك $medName منخفض! يرجى إعادة التعبئة قريبًا.",
                 scheduledTime: notificationTime,
                 speakImmediately: true,
               );

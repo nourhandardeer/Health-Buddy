@@ -144,14 +144,21 @@ class _DatePageState extends State<DatePage> {
           await NotificationService.scheduleRepeatedNotification(
             baseId: "${widget.documentId}_${i + 1}", // the unique med ID
             title: "Medication Reminder",
-            body:
+            bodyEn:
                 "Time to take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
-            ttsMessage:
+            bodyAr:
+                "حان وقت تناول ${widget.dosage} ${widget.selectedUnit} من ${widget.medicationName}.",
+            ttsMessageEn:
                 "It's time to take your medicine: please take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
+            ttsMessageAr:
+                "حان وقت تناول دوائك : الرجاء تناول ${widget.dosage} ${widget.selectedUnit} من ${widget.medicationName}.",
             startTime: scheduledTime, // the actual scheduled DateTime
 
             repeatCount: 24,
             interval: Duration(minutes: 15),
+            dosage: int.tryParse(widget.dosage) ?? 0,
+            unit: widget.selectedUnit,
+            medName: widget.medicationName,
           );
         }
         dataToSave['reminderTimes'] = reminderTimes;

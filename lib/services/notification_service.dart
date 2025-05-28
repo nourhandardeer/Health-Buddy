@@ -1,4 +1,6 @@
 //import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -9,6 +11,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:ui';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -21,7 +24,7 @@ class NotificationService {
   // ✅ Initialization
   static Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     requestNotificationPermission();
 
     // Get the device's timezone (e.g., 'Asia/Kolkata', 'America/New_York')
@@ -39,7 +42,6 @@ class NotificationService {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    
     const AndroidNotificationChannel medicationChannel =
         AndroidNotificationChannel(
       'medication_channel_id',
@@ -64,17 +66,17 @@ class NotificationService {
       importance: Importance.max,
     );
 
-    await _notificationsPlugin 
+    await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(medicationChannel);
 
-    await _notificationsPlugin 
+    await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(instantChannel);
 
-    await _notificationsPlugin 
+    await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(emergencyChannel);
@@ -82,7 +84,7 @@ class NotificationService {
     const InitializationSettings settings =
         InitializationSettings(android: androidSettings);
 
-    await _notificationsPlugin .initialize(
+    await _notificationsPlugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
         if (response.payload != null && response.payload!.isNotEmpty) {
@@ -104,6 +106,16 @@ class NotificationService {
   static Future<void> _speakMessage(String message) async {
     try {
       if (!_isInitialized) await initialize();
+
+      // Detect Arabic based on characters
+      final bool isArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(message);
+
+      if (isArabic) {
+        await _tts.setLanguage("ar-SA"); // Use "ar-XA" or "ar" if needed
+      } else {
+        await _tts.setLanguage("en-US");
+      }
+
       await _tts.speak(message);
     } catch (e) {
       print("Error speaking message: $e");
@@ -143,14 +155,30 @@ class NotificationService {
   static Future<void> scheduleNotification({
     required int id,
     required String title,
-    required String body,
+    required String bodyEn,
+    required String bodyAr,
     required DateTime scheduledTime,
-    String? ttsMessage,
+    String? ttsMessageAr,
+    String? ttsMessageEn,
     bool speakImmediately = false,
   }) async {
     if (!_isInitialized) await initialize();
     bool enabled = await areNotificationsEnabled();
     if (!enabled) return;
+
+    final String languageCode = PlatformDispatcher.instance.locale.languageCode;
+
+    // Choose TTS message based on device language
+    String? selectedTtsMessage;
+    String localizedBody;
+
+    if (languageCode == 'ar') {
+      selectedTtsMessage = ttsMessageAr;
+      localizedBody = bodyAr;
+    } else {
+      selectedTtsMessage = ttsMessageEn;
+      localizedBody = bodyEn;
+    }
 
     final tz.TZDateTime tzScheduledTime =
         tz.TZDateTime.from(scheduledTime, tz.local);
@@ -173,16 +201,16 @@ class NotificationService {
     await _notificationsPlugin.zonedSchedule(
       id,
       title,
-      body,
+      localizedBody,
       tzScheduledTime,
       platformDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
-      payload: ttsMessage,
+      payload: selectedTtsMessage,
     );
 
-    if (speakImmediately && ttsMessage != null) {
-      await _speakMessage(ttsMessage);
+    if (speakImmediately && selectedTtsMessage != null) {
+      await _speakMessage(selectedTtsMessage);
     }
   }
 
@@ -226,15 +254,60 @@ class NotificationService {
   static Future<void> scheduleRepeatedNotification({
     required String baseId,
     required String title,
-    required String body,
-    required String ttsMessage,
+    required String bodyEn,
+    required String bodyAr,
     required DateTime startTime,
+    String? ttsMessageAr,
+    String? ttsMessageEn,
     required int repeatCount,
     required Duration interval,
+    required int dosage,
+    required String unit,
+    required String medName,
   }) async {
     if (!_isInitialized) await initialize();
     bool enabled = await areNotificationsEnabled();
     if (!enabled) return;
+
+    final String languageCode = PlatformDispatcher.instance.locale.languageCode;
+
+    // Choose TTS message based on device language
+    String? selectedTtsMessage;
+    String localizedBody;
+    // Helper to convert digits to Arabic numerals
+    String convertToArabicNumbers(String input) {
+      final arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      return input.replaceAllMapped(RegExp(r'\d'), (match) {
+        return arabicNumbers[int.parse(match.group(0)!)];
+      });
+    }
+
+    String selectedLanguage = languageCode == 'ar' ? 'ar' : 'en';
+    await _tts.setLanguage(selectedLanguage);
+
+    if (languageCode == 'ar' && ttsMessageAr != null) {
+      // Replace placeholders with variables
+      String unitAr = _translateUnitToArabic(unit);
+
+      String arabicMessage = ttsMessageAr
+          .replaceAll('${dosage}', convertToArabicNumbers(dosage.toString()))
+          .replaceAll('${unit}', unitAr)
+          .replaceAll('${medName}', medName);
+
+      selectedTtsMessage = arabicMessage;
+      localizedBody = bodyAr;
+    } else if (ttsMessageEn != null) {
+      String message = ttsMessageEn
+          .replaceAll('${dosage}', dosage.toString())
+          .replaceAll('${unit}', unit)
+          .replaceAll('${medName}', medName);
+
+      selectedTtsMessage = message;
+      localizedBody = bodyEn;
+    } else {
+      selectedTtsMessage = null;
+      localizedBody = bodyEn;
+    }
 
     try {
       for (int i = 0; i < repeatCount; i++) {
@@ -264,22 +337,24 @@ class NotificationService {
         await _notificationsPlugin.zonedSchedule(
           id,
           title,
-          body,
+          localizedBody,
           tzScheduledTime,
           platformDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
           matchDateTimeComponents: DateTimeComponents.time,
-          payload: ttsMessage,
+          payload: selectedTtsMessage,
         );
+
+       
+
         await _storeScheduledId(id);
-        print(
-            "📅 Scheduled notification: id=$id, time=$tzScheduledTime, title=$title, body=$body");
-        print("🕓 Local scheduled time: $scheduledTime");
-        print("🕒 TZ-converted scheduled time: $tzScheduledTime");
+        
       }
     } catch (e) {
       print("❌ Failed to schedule repeated notification: $e");
     }
+    
+    
   }
 
   static Future<void> scheduleDailyMedReminders(String uid) async {
@@ -331,17 +406,55 @@ class NotificationService {
         await scheduleRepeatedNotification(
           baseId: "${docId}_${i + 1}",
           title: 'Time for $medName',
-          body: "Time to take ${dosage} ${selectedUnit} of ${medName}",
+          bodyEn: "Time to take ${dosage} ${selectedUnit} of ${medName}",
+          bodyAr:
+              "حان وقت تناول ${dosage} ${_translateUnitToArabic(selectedUnit)} من ${medName}",
           startTime: scheduledDateTime,
-          ttsMessage:
+          ttsMessageEn:
               "It's time to take your medicine: please take ${dosage} ${selectedUnit} of ${medName}.",
+          ttsMessageAr:
+              "حان وقت تناول دوائك: الرجاء تناول ${dosage} ${selectedUnit} من ${medName}.",
           repeatCount: 24,
           interval: const Duration(minutes: 15),
+          dosage: dosage,
+          unit: selectedUnit,
+          medName: medName,
         );
       }
     }
 
     print("✅ All reminders and alarms scheduled for user: $uid");
+  }
+
+  static String _translateUnitToArabic(String unit) {
+    const unitMap = {
+      "Pill(s)": "حبّة",
+      "Ampoule(s)": "أمبولة",
+      "Tablet(s)": "قرص",
+      "Capsule(s)": "كبسولة",
+      "IU": "وحدة دولية",
+      "Application": "تطبيق",
+      "Drop": "قطرة",
+      "Gram": "غرام",
+      "Injection": "حقنة",
+      "Milligram": "ميليغرام",
+      "Milliliter": "ميليلتر",
+      "MM": "ملم",
+      "Packet": "علبة",
+      "Pessary": "تحميلة مهبلية",
+      "Piece": "قطعة",
+      "Portion": "جزء",
+      "Puff": "رشة",
+      "Spray": "بخاخ",
+      "Suppository": "تحميلة",
+      "Teaspoon": "ملعقة صغيرة",
+      "Vaginal Capsule": "كبسولة مهبلية",
+      "Vaginal Suppository": "تحميلة مهبلية",
+      "Vaginal Tablet": "قرص مهبلي",
+      "MG": "ميليغرام",
+    };
+
+    return unitMap[unit] ?? unit; // fallback to original if not found
   }
 
   static Future<void> notifyEmergencyContacts({

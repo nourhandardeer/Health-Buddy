@@ -107,10 +107,13 @@ class Auth {
           await NotificationService.scheduleNotification(
             id: doc.hashCode,
             title: "Medication Reminder",
-            body: "Time to take ${data['dosage']} ${data['unit']} of ${data['name']}",
+            bodyEn: "Time to take ${data['dosage']} ${data['unit']} of ${data['name']}",
+            bodyAr: "حان وقت تناول ${data['dosage']} ${data['unit']} من ${data['name']}",
             scheduledTime: scheduledTime,
-            ttsMessage:
+            ttsMessageEn:
             "It is time to take your medicine. Please take ${data['dosage']} ${data['unit']} of ${data['name']}.",
+            ttsMessageAr:
+              "حان وقت تناول دوائك: الرجاء تناول ${data['dosage']} ${data['unit']} من ${data['name']}.",
           );
         }
       }
