@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:health_buddy/home.dart';
+import 'package:medtrack/home.dart';
 import 'package:http/http.dart' as http;
 
 import '../EmergencyContactHelper.dart';
@@ -62,7 +62,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         Uri.parse("https://api.cloudinary.com/v1_1/defwfev8k/image/upload");
 
     final request = http.MultipartRequest('POST', cloudinaryUrl)
-      ..fields['upload_preset'] = 'Health_Buddy'
+      ..fields['upload_preset'] = 'medtrack'
       ..files.add(
           await http.MultipartFile.fromPath('file', _profileImageFile!.path));
     final user = FirebaseAuth.instance.currentUser;
@@ -207,7 +207,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             SizedBox(height: 8),
             Text("Add Profile Photo"),
             SizedBox(height: 20),
-              TextField(
+            TextField(
               controller: _ageController,
               decoration: InputDecoration(labelText: "Age"),
               maxLines: 3,

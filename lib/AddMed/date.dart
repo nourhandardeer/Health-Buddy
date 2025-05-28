@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:health_buddy/services/notification_service.dart';
+import 'package:medtrack/services/notification_service.dart';
 import 'refillrequest.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -149,7 +149,7 @@ class _DatePageState extends State<DatePage> {
             ttsMessage:
                 "It's time to take your medicine: please take ${widget.dosage} ${widget.selectedUnit} of ${widget.medicationName}.",
             startTime: scheduledTime, // the actual scheduled DateTime
-            
+
             repeatCount: 24,
             interval: Duration(minutes: 15),
           );

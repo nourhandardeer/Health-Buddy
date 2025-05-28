@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:health_buddy/pages/loggin.dart';
-import 'package:health_buddy/pages/sign_up.dart';
+import 'package:medtrack/pages/loggin.dart';
+import 'package:medtrack/pages/sign_up.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -16,7 +16,8 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center, // Center vertically
           crossAxisAlignment: CrossAxisAlignment.center, // Center horizontally
           children: [
-            Image.asset('images/MedTrack -name.png', width: 450, height: 450), // Logo
+            Image.asset('images/MedTrack -name.png',
+                width: 450, height: 450), // Logo
 
             SizedBox(height: 80), // Spacing
             ElevatedButton(

@@ -1,12 +1,14 @@
 //import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-//import 'package:health_buddy/services/firestore_service.dart';
+//import 'package:medtrack/services/firestore_service.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -19,17 +21,25 @@ class NotificationService {
   // ✅ Initialization
   static Future<void> initialize() async {
     if (_isInitialized) return;
+    
+    requestNotificationPermission();
+
+    // Get the device's timezone (e.g., 'Asia/Kolkata', 'America/New_York')
+    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
 
     tz.initializeTimeZones();
+    print("Timezone initialized: $timeZoneName");
+
+    // Set the local timezone
+    final tz.Location location = tz.getLocation(timeZoneName);
+    tz.setLocalLocation(location);
+
     await _initTTS();
 
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // إنشاء قنوات الإشعارات كلها مرة واحدة
-    final FlutterLocalNotificationsPlugin plugin =
-        FlutterLocalNotificationsPlugin();
-
+    
     const AndroidNotificationChannel medicationChannel =
         AndroidNotificationChannel(
       'medication_channel_id',
@@ -54,17 +64,17 @@ class NotificationService {
       importance: Importance.max,
     );
 
-    await plugin
+    await _notificationsPlugin 
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(medicationChannel);
 
-    await plugin
+    await _notificationsPlugin 
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(instantChannel);
 
-    await plugin
+    await _notificationsPlugin 
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(emergencyChannel);
@@ -72,7 +82,7 @@ class NotificationService {
     const InitializationSettings settings =
         InitializationSettings(android: androidSettings);
 
-    await plugin.initialize(
+    await _notificationsPlugin .initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
         if (response.payload != null && response.payload!.isNotEmpty) {
@@ -97,6 +107,13 @@ class NotificationService {
       await _tts.speak(message);
     } catch (e) {
       print("Error speaking message: $e");
+    }
+  }
+
+  static Future<void> requestNotificationPermission() async {
+    final status = await Permission.notification.status;
+    if (!status.isGranted) {
+      await Permission.notification.request();
     }
   }
 
@@ -222,7 +239,7 @@ class NotificationService {
     try {
       for (int i = 0; i < repeatCount; i++) {
         final int id = generateNotificationId(baseId, i);
-        
+
         ;
 
         final scheduledTime = startTime.add(interval * i);
@@ -255,6 +272,10 @@ class NotificationService {
           payload: ttsMessage,
         );
         await _storeScheduledId(id);
+        print(
+            "📅 Scheduled notification: id=$id, time=$tzScheduledTime, title=$title, body=$body");
+        print("🕓 Local scheduled time: $scheduledTime");
+        print("🕒 TZ-converted scheduled time: $tzScheduledTime");
       }
     } catch (e) {
       print("❌ Failed to schedule repeated notification: $e");
@@ -303,13 +324,9 @@ class NotificationService {
           time.minute,
         );
 
-
         if (scheduledDateTime.isBefore(now)) {
-          
           scheduledDateTime = scheduledDateTime.add(Duration(days: 1));
         }
-
-      
 
         await scheduleRepeatedNotification(
           baseId: "${docId}_${i + 1}",
@@ -321,7 +338,6 @@ class NotificationService {
           repeatCount: 24,
           interval: const Duration(minutes: 15),
         );
-        
       }
     }
 
@@ -362,8 +378,6 @@ class NotificationService {
             ),
           ),
         );
-
-       
       }
     } catch (e) {
       print("❌ Failed to notify emergency contacts: $e");
@@ -372,8 +386,7 @@ class NotificationService {
 
   @pragma('vm:entry-point')
   static Future<void> checkAndNotifyUnTakenDose(
-      String doseKey, String userId,String medName) async {
-   
+      String doseKey, String userId, String medName) async {
     final now = DateTime.now();
     final todayDate =
         "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
@@ -405,10 +418,7 @@ class NotificationService {
     if (!ids.contains(id.toString())) {
       ids.add(id.toString());
       await prefs.setStringList('scheduledNotificationIds', ids);
-      
-    } else {
-     
-    }
+    } else {}
   }
 
   // ✅ Cancel Helpers
@@ -424,12 +434,11 @@ class NotificationService {
       print("ℹ️ No tracked notifications to cancel.");
       return;
     }
-    
+
     for (final idStr in idStrings) {
       final id = int.tryParse(idStr);
       if (id != null) {
         await _notificationsPlugin.cancel(id);
-        
       }
     }
 
@@ -462,7 +471,7 @@ class NotificationService {
 
       for (int j = 0; j < repeatCountPerReminder; j++) {
         int id = generateNotificationId(baseId, j);
-        
+
         await _notificationsPlugin.cancel(id);
       }
 

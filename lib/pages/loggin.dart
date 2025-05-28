@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:health_buddy/home.dart';
+import 'package:medtrack/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:health_buddy/auth.dart';
-import 'package:health_buddy/pages/sign_up.dart';
+import 'package:medtrack/auth.dart';
+import 'package:medtrack/pages/sign_up.dart';
 
 class LoginScreen extends StatefulWidget {
   LoginScreen({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:health_buddy/pages/add_appointment.dart';
-import 'package:health_buddy/pages/add_doctor.dart';
+import 'package:medtrack/pages/add_appointment.dart';
+import 'package:medtrack/pages/add_doctor.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../pages/EditAppointmentPage.dart';
 import '../pages/EditDoctorPage.dart';
@@ -13,6 +13,7 @@ class ManagePage extends StatefulWidget {
   @override
   State<ManagePage> createState() => _ManagePageState();
 }
+
 class _ManagePageState extends State<ManagePage> {
   final FirestoreService _firestoreService = FirestoreService();
   Future<List<QueryDocumentSnapshot>>? _appointmentsFuture;
@@ -39,7 +40,6 @@ class _ManagePageState extends State<ManagePage> {
     });
   }
 
-
   Future<List<QueryDocumentSnapshot>> _getAppointments() async {
     final linkedUserIds = await _linkedUsersFuture!;
     return _firestoreService.getAppointments(linkedUserIds);
@@ -49,8 +49,6 @@ class _ManagePageState extends State<ManagePage> {
     final linkedUserIds = await _linkedUsersFuture!;
     return _firestoreService.getDoctors(linkedUserIds);
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +66,8 @@ class _ManagePageState extends State<ManagePage> {
 
         if (linkedUsersSnapshot.hasError || !linkedUsersSnapshot.hasData) {
           return const Center(
-            child: Text("Error loading user data.", style: TextStyle(color: Colors.red)),
+            child: Text("Error loading user data.",
+                style: TextStyle(color: Colors.red)),
           );
         }
 
@@ -106,7 +105,6 @@ class _ManagePageState extends State<ManagePage> {
     );
   }
 
-
   Widget _buildAppointmentsTab(BuildContext context) {
     return FutureBuilder<List<QueryDocumentSnapshot>>(
       future: _appointmentsFuture,
@@ -122,7 +120,8 @@ class _ManagePageState extends State<ManagePage> {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: appointments.length,
-          separatorBuilder: (_, __) => const Divider(thickness: 1, color: Colors.grey),
+          separatorBuilder: (_, __) =>
+              const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
             var appointment = appointments[index];
             return _buildAppointmentCard(appointment, appointment.id, context);
@@ -147,19 +146,26 @@ class _ManagePageState extends State<ManagePage> {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: doctors.length,
-          separatorBuilder: (_, __) => const Divider(thickness: 1, color: Colors.grey),
+          separatorBuilder: (_, __) =>
+              const Divider(thickness: 1, color: Colors.grey),
           itemBuilder: (context, index) {
             final doctor = doctors[index];
             return Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color.fromARGB(255, 220, 232, 242), Color(0xFFFFFFFF)],
+                  colors: [
+                    Color.fromARGB(255, 220, 232, 242),
+                    Color(0xFFFFFFFF)
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
-                  BoxShadow(color: Colors.grey.shade100, blurRadius: 10, offset: const Offset(0, 4)),
+                  BoxShadow(
+                      color: Colors.grey.shade100,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4)),
                 ],
               ),
               child: Card(
@@ -174,12 +180,15 @@ class _ManagePageState extends State<ManagePage> {
                   ),
                   title: Text(
                     "Dr. ${doctor['doctorName']}",
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Specialty: ${doctor['specialty']}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      Text("Specialty: ${doctor['specialty']}",
+                          style: const TextStyle(
+                              fontSize: 10, color: Colors.grey)),
                     ],
                   ),
                   onTap: () {
@@ -202,28 +211,31 @@ class _ManagePageState extends State<ManagePage> {
     );
   }
 
-
   Future<void> _deleteDoctor(String doctorId, BuildContext context) async {
     try {
       final firestore = FirebaseFirestore.instance;
       final doc = await firestore.collection('doctors').doc(doctorId).get();
 
       if (!doc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Doctor not found')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Doctor not found')));
         return;
       }
 
       await firestore.collection('doctors').doc(doctorId).delete();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Doctor deleted successfully!'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Doctor deleted successfully!'),
+            backgroundColor: Colors.red),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     }
   }
 
-
-  Widget _buildAppointmentCard(QueryDocumentSnapshot appointment, String id, BuildContext context) {
+  Widget _buildAppointmentCard(
+      QueryDocumentSnapshot appointment, String id, BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -233,7 +245,10 @@ class _ManagePageState extends State<ManagePage> {
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.grey.shade100, blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.grey.shade100,
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
         ],
       ),
       child: Card(
@@ -246,12 +261,16 @@ class _ManagePageState extends State<ManagePage> {
             onPressed: () => deleteAppointment(id, context),
             icon: const Icon(Icons.delete, color: Colors.red),
           ),
-          title: Text("Dr. ${appointment['doctorName']}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          title: Text("Dr. ${appointment['doctorName']}",
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Date: ${appointment['appointmentDate']}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
-              Text("Time: ${appointment['appointmentTime']}", style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              Text("Date: ${appointment['appointmentDate']}",
+                  style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              Text("Time: ${appointment['appointmentTime']}",
+                  style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
           onTap: () {
@@ -265,29 +284,33 @@ class _ManagePageState extends State<ManagePage> {
               ),
             );
           },
-
         ),
       ),
     );
   }
 
-
-  Future<void> deleteAppointment(String appointmentId, BuildContext context) async {
+  Future<void> deleteAppointment(
+      String appointmentId, BuildContext context) async {
     try {
       final firestore = FirebaseFirestore.instance;
-      final doc = await firestore.collection('appointments').doc(appointmentId).get();
+      final doc =
+          await firestore.collection('appointments').doc(appointmentId).get();
 
       if (!doc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment not found')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Appointment not found')));
         return;
       }
 
       await firestore.collection('appointments').doc(appointmentId).delete();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Appointment deleted successfully!'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Appointment deleted successfully!'),
+            backgroundColor: Colors.red),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     }
   }
 
@@ -296,7 +319,8 @@ class _ManagePageState extends State<ManagePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset('images/photo2.png', width: 200, height: 200, fit: BoxFit.cover),
+          Image.asset('images/photo2.png',
+              width: 200, height: 200, fit: BoxFit.cover),
           const SizedBox(height: 16),
           const Text(
             'Manage your healthcare easily! Add your preferred doctor or appointment.',
@@ -308,10 +332,12 @@ class _ManagePageState extends State<ManagePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               minimumSize: const Size(200, 50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => _showBottomSheet(context),
-            child: const Text('Get Started', style: TextStyle(fontSize: 18, color: Colors.white)),
+            child: const Text('Get Started',
+                style: TextStyle(fontSize: 18, color: Colors.white)),
           ),
         ],
       ),
@@ -321,19 +347,24 @@ class _ManagePageState extends State<ManagePage> {
   void _showBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Choose an Option', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('Choose an Option',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ListTile(
               leading: const Icon(Icons.event, color: Colors.blue),
               title: const Text('Add Appointment'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const AddAppointment()));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const AddAppointment()));
               },
             ),
             ListTile(
@@ -341,7 +372,8 @@ class _ManagePageState extends State<ManagePage> {
               title: const Text('Add Doctor'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => AddDoctor()));
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => AddDoctor()));
               },
             ),
             const SizedBox(height: 16),
@@ -351,7 +383,8 @@ class _ManagePageState extends State<ManagePage> {
                 minimumSize: const Size(double.infinity, 50),
               ),
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.black, fontSize: 18)),
+              child: const Text('Cancel',
+                  style: TextStyle(color: Colors.black, fontSize: 18)),
             ),
           ],
         ),
@@ -359,4 +392,3 @@ class _ManagePageState extends State<ManagePage> {
     );
   }
 }
-

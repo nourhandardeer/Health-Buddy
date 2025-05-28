@@ -2,14 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:health_buddy/services/firestore_service.dart';
-import 'package:health_buddy/services/notification_service.dart';
+import 'package:medtrack/services/firestore_service.dart';
+import 'package:medtrack/services/notification_service.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:health_buddy/NavigationBar/manage_page.dart';
-import 'package:health_buddy/NavigationBar/medications_page.dart';
-import 'package:health_buddy/NavigationBar/refills_page.dart';
-import 'package:health_buddy/pages/profile_page.dart';
-import 'package:health_buddy/pages/setting/settings_page.dart';
+import 'package:medtrack/NavigationBar/manage_page.dart';
+import 'package:medtrack/NavigationBar/medications_page.dart';
+import 'package:medtrack/NavigationBar/refills_page.dart';
+import 'package:medtrack/pages/profile_page.dart';
+import 'package:medtrack/pages/setting/settings_page.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 //import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -128,7 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!userDoc.exists) return;
 
     final currentUserPhone = userDoc.data()?['phone'];
-    
 
     if (currentUserPhone == null) return;
 
@@ -141,16 +140,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!emergencyContactDoc.exists) return;
 
     final linkedPatientId = emergencyContactDoc.data()?['linkedPatientId'];
-   
+
     if (linkedPatientId == null) return;
 
     final today = DateTime.now();
     final todayName = getDayName(today.weekday);
-    
-    
-    
+
     for (var medDoc in meds) {
-      
       var medData = medDoc.data() as Map<String, dynamic>;
       String frequency = (medData['frequency'] ?? '').toString().toLowerCase();
       String medId = medDoc.id;
@@ -158,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
       List<String> doseKeys = [];
       List<String> reminderTimes =
           List<String>.from(medData['reminderTimes'] ?? []);
-          
 
       if (frequency == 'once a day') {
         doseKeys = ['${medId}_1'];
@@ -178,7 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         doseKeys = [medId];
       }
-    
 
       for (var i = 0; i < doseKeys.length; i++) {
         final doseKey = doseKeys[i];
@@ -193,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (DateTime.now()
                 .isAfter(reminderTime.add(const Duration(minutes: 15)))) {
               await NotificationService.checkAndNotifyUnTakenDose(
-                  doseKey, linkedPatientId,medName);
+                  doseKey, linkedPatientId, medName);
               print("🚨 Missed dose notification sent for $doseKey");
             }
           }

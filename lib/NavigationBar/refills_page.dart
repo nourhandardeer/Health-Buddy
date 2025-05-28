@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:health_buddy/Refills/refill_details.dart';
-import 'package:health_buddy/services/notification_service.dart'; // Import NotificationService
+import 'package:medtrack/Refills/refill_details.dart';
+import 'package:medtrack/services/notification_service.dart'; // Import NotificationService
 import 'package:intl/intl.dart';
 import '../services/UserLocationHolder.dart'; // تأكد ان المسار صح
 

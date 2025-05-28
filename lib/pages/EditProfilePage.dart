@@ -57,63 +57,66 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> pickAndUploadProfileImage() async {
     setState(() {
-    _isLoading = true;
-  });
-  final picker = ImagePicker();
-  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-  if (pickedFile == null) {
-    setState(() {
-      _isLoading = false;
+      _isLoading = true;
     });
-    return;
-  }  // User didn't pick an image
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-  final file = File(pickedFile.path);
-  final cloudinaryUrl = Uri.parse("https://api.cloudinary.com/v1_1/defwfev8k/image/upload");
+    if (pickedFile == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    } // User didn't pick an image
 
-  try {
-    // Create a multipart request to upload the image
-    final request = http.MultipartRequest('POST', cloudinaryUrl)
-      ..fields['upload_preset'] = 'Health_Buddy'
-      ..files.add(await http.MultipartFile.fromPath('file', file.path));
+    final file = File(pickedFile.path);
+    final cloudinaryUrl =
+        Uri.parse("https://api.cloudinary.com/v1_1/defwfev8k/image/upload");
 
-    final response = await request.send();
+    try {
+      // Create a multipart request to upload the image
+      final request = http.MultipartRequest('POST', cloudinaryUrl)
+        ..fields['upload_preset'] = 'medtrack'
+        ..files.add(await http.MultipartFile.fromPath('file', file.path));
 
-    if (response.statusCode == 200) {
-      final resStr = await response.stream.bytesToString();
-      final jsonResponse = json.decode(resStr);
-      final imageUrl = jsonResponse['secure_url'];
+      final response = await request.send();
 
-      // Update the profile image URL in Firestore
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-          'profileImage': imageUrl,
-        });
+      if (response.statusCode == 200) {
+        final resStr = await response.stream.bytesToString();
+        final jsonResponse = json.decode(resStr);
+        final imageUrl = jsonResponse['secure_url'];
 
-        // Update the local state with the new image URL
-        setState(() {
-          _profileImageUrl = imageUrl;
-          _isLoading = false;
-        });
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Profile image updated successfully!")),
-        );
+        // Update the profile image URL in Firestore
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({
+            'profileImage': imageUrl,
+          });
+
+          // Update the local state with the new image URL
+          setState(() {
+            _profileImageUrl = imageUrl;
+            _isLoading = false;
+          });
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Profile image updated successfully!")),
+          );
+        }
+      } else {
+        throw Exception("Failed to upload image");
       }
-    } else {
-      throw Exception("Failed to upload image");
+    } catch (e) {
+      // Handle any errors during the upload process
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error uploading image: $e")),
+      );
     }
-  } catch (e) {
-    // Handle any errors during the upload process
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Error uploading image: $e")),
-    );
   }
-}
-
 
   // Update user details in Firestore (UID remains unchanged)
   Future<void> _updateProfile() async {
@@ -151,15 +154,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 GestureDetector(
                   onTap: pickAndUploadProfileImage,
                   child: _isLoading
-                  ? CircularProgressIndicator()
-                  : CircleAvatar(
-                    key: ValueKey(_profileImageUrl),
-                    radius: 60,
-                    backgroundImage: _profileImageUrl.startsWith('http')
-                        ? NetworkImage(_profileImageUrl)
-                        : AssetImage("images/user.png") as ImageProvider,
-                    backgroundColor: Colors.transparent,
-                  ),
+                      ? CircularProgressIndicator()
+                      : CircleAvatar(
+                          key: ValueKey(_profileImageUrl),
+                          radius: 60,
+                          backgroundImage: _profileImageUrl.startsWith('http')
+                              ? NetworkImage(_profileImageUrl)
+                              : AssetImage("images/user.png") as ImageProvider,
+                          backgroundColor: Colors.transparent,
+                        ),
                 ),
                 SizedBox(height: 8),
                 Text("Tap image to change"),

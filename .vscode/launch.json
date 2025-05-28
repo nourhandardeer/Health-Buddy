@@ -7,7 +7,7 @@
         
     
         {
-            "name": "health_buddy",
+            "name": "medtrack",
             "request": "launch",
             "type": "dart"
         }

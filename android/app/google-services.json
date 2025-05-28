@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:132666813360:android:c52fc2eaaedfe527360475",
         "android_client_info": {
-          "package_name": "com.example.health_buddy"
+          "package_name": "com.example.medtrack"
         }
       },
       "oauth_client": [],

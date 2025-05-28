@@ -1,23 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:health_buddy/pages/EditProfilePage.dart';
-import 'package:health_buddy/pages/loggin.dart';
-import 'package:health_buddy/pages/splash_screen.dart';
-import 'package:health_buddy/pages/EmergencyContactPage.dart';
-import 'package:health_buddy/services/theme_provider.dart';
+import 'package:medtrack/pages/EditProfilePage.dart';
+import 'package:medtrack/pages/loggin.dart';
+import 'package:medtrack/pages/splash_screen.dart';
+import 'package:medtrack/pages/EmergencyContactPage.dart';
+import 'package:medtrack/services/theme_provider.dart';
 import 'package:provider/provider.dart';
 import '../../services/firestore_service.dart';
 import 'ChangePasswordPage.dart';
 import 'SetPinPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:health_buddy/auth.dart';
+import 'package:medtrack/auth.dart';
 
-
-class SettingsPage extends StatefulWidget  {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
-   @override
+  @override
   _SettingsPageState createState() => _SettingsPageState();
 }
 
@@ -38,11 +37,11 @@ class _SettingsPageState extends State<SettingsPage> {
       _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
     });
   }
+
   Future<void> _checkIfEmergencyContact() async {
     bool isEmergency = await FirestoreService().isEmergencyContact();
     setState(() {
       _isEmergency = isEmergency;
-
     });
   }
 
@@ -55,7 +54,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   final Auth auth = Auth();
-
 
   @override
   Widget build(BuildContext context) {
@@ -99,36 +97,34 @@ class _SettingsPageState extends State<SettingsPage> {
 
           // Emergency Contacts
           ListTile(
-            leading: Icon(Icons.phone, color: Colors.red),
-            title: Text('Emergency Contacts'),
-            subtitle: Text('Manage emergency numbers'),
-            trailing: Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              if (_isEmergency) {
-                showDialog(
-                  context: context,
-                  builder: (context) =>
-                      AlertDialog(
-                        title: Text('Action not allowed'),
-                        content: Text(
-                            'You cannot add emergency contacts because you are already an emergency contact.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text('OK'),
-                          ),
-                        ],
-                      ),
-                );
-              } else {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => EmergencyContactPage()));
-              };
-            }
-
-          ),
+              leading: Icon(Icons.phone, color: Colors.red),
+              title: Text('Emergency Contacts'),
+              subtitle: Text('Manage emergency numbers'),
+              trailing: Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                if (_isEmergency) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text('Action not allowed'),
+                      content: Text(
+                          'You cannot add emergency contacts because you are already an emergency contact.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => EmergencyContactPage()));
+                }
+                ;
+              }),
           Divider(),
 
           // Security Settings (Change Password or Set PIN)
@@ -168,17 +164,23 @@ class _SettingsPageState extends State<SettingsPage> {
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('Please enter your password to delete your account.'),
+                      const Text(
+                          'Please enter your password to delete your account.'),
                       TextField(
                         controller: passwordController,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Password'),
+                        decoration:
+                            const InputDecoration(labelText: 'Password'),
                       ),
                     ],
                   ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Delete')),
                   ],
                 ),
               );
@@ -187,7 +189,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 try {
                   await deleteAccountAndData(passwordController.text.trim());
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Account deleted successfully')),
+                    const SnackBar(
+                        content: Text('Account deleted successfully')),
                   );
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(builder: (_) => const SplashScreen()),
@@ -199,29 +202,27 @@ class _SettingsPageState extends State<SettingsPage> {
                 }
               }
             },
-
           ),
           Divider(),
 
           // Logout Button
           ListTile(
-  leading: Icon(Icons.logout, color: Colors.red),
-  title: Text('Logout'),
-  onTap: () async {
-    await auth.signOut();  // call your custom function here
-    
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => SplashScreen()),
-    );
-  },
-),
+            leading: Icon(Icons.logout, color: Colors.red),
+            title: Text('Logout'),
+            onTap: () async {
+              await auth.signOut(); // call your custom function here
 
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => SplashScreen()),
+              );
+            },
+          ),
         ],
       ),
-
     );
   }
+
   Future<void> deleteAccountAndData(String password) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -229,19 +230,17 @@ class _SettingsPageState extends State<SettingsPage> {
     final userId = user.uid;
 
     try {
-
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: password,
       );
       await user.reauthenticateWithCredential(credential);
 
-
-      final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
+      final userDocRef =
+          FirebaseFirestore.instance.collection('users').doc(userId);
       final userDoc = await userDocRef.get();
       final userData = userDoc.data();
       final phone = userData?['phone'];
-
 
       if (phone != null && phone.toString().isNotEmpty) {
         final contactsQuery = await userDocRef
@@ -253,7 +252,6 @@ class _SettingsPageState extends State<SettingsPage> {
           await doc.reference.delete();
         }
       }
-
 
       final medsTakenDocs = await userDocRef.collection('medsTaken').get();
       for (final doc in medsTakenDocs.docs) {
@@ -275,11 +273,12 @@ class _SettingsPageState extends State<SettingsPage> {
         }
       }
 
-
       await userDocRef.delete();
 
       if (phone != null && phone.toString().isNotEmpty) {
-        final emergencyRef = FirebaseFirestore.instance.collection('emergencyContacts').doc(phone.toString());
+        final emergencyRef = FirebaseFirestore.instance
+            .collection('emergencyContacts')
+            .doc(phone.toString());
         final emergencyDoc = await emergencyRef.get();
         if (emergencyDoc.exists) {
           await emergencyRef.delete();
@@ -288,7 +287,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
       final topLevelCollections = ['meds', 'doctors', 'appointments'];
       for (final collectionName in topLevelCollections) {
-        final querySnapshot = await FirebaseFirestore.instance.collection(collectionName).get();
+        final querySnapshot =
+            await FirebaseFirestore.instance.collection(collectionName).get();
         for (final doc in querySnapshot.docs) {
           final data = doc.data();
           final List<dynamic>? linkedUserIds = data['linkedUserIds'];
@@ -308,7 +308,6 @@ class _SettingsPageState extends State<SettingsPage> {
       }
 
       await user.delete();
-
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         throw Exception('Please log in again to delete your account.');
@@ -319,7 +318,6 @@ class _SettingsPageState extends State<SettingsPage> {
       throw Exception('Unexpected error: $e');
     }
   }
-
 
   // Function to show the Security options dialog
   void _showSecurityOptions(BuildContext context) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:health_buddy/AddMed/addmed.dart';
-import 'package:health_buddy/AddMed/medication_details_page.dart';
+import 'package:medtrack/AddMed/addmed.dart';
+import 'package:medtrack/AddMed/medication_details_page.dart';
 
 import '../services/firestore_service.dart';
 
@@ -118,8 +118,10 @@ class _MedicationsPageState extends State<MedicationsPage> {
                           color: Colors.blue, size: 30),
                       title: Text(
                         medData["name"] ?? "Unknown Medication",
-                        style:
-                            const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold),
                       ),
                       subtitle: Text(
                         " ${medData['frequency'] ?? 'Specific Days '}",

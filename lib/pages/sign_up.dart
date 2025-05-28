@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:health_buddy/auth.dart';
-import 'package:health_buddy/home.dart';
-import 'package:health_buddy/pages/loggin.dart';
-import 'package:health_buddy/pages/profile_setup.dart';
+import 'package:medtrack/auth.dart';
+import 'package:medtrack/home.dart';
+import 'package:medtrack/pages/loggin.dart';
+import 'package:medtrack/pages/profile_setup.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -24,7 +24,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? errorMessage = '';
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool isEmergency= false;
+  bool isEmergency = false;
 
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
@@ -72,10 +72,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (errorMsg == null) {
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          await checkAndLinkEmergencyContact(user, user.uid, phone); // ✅ Pass UID and phone
-          _onSignupSuccess(user.uid, firstName, lastName, phone, email, isEmergency);
+          await checkAndLinkEmergencyContact(
+              user, user.uid, phone); // ✅ Pass UID and phone
+          _onSignupSuccess(
+              user.uid, firstName, lastName, phone, email, isEmergency);
         }
-
       } else {
         setState(() {
           errorMessage = errorMsg;
@@ -92,7 +93,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
     }
   }
-  void _onSignupSuccess(String userId, String firstName, String lastName, String phone, String email, bool isEmergency) async {
+
+  void _onSignupSuccess(String userId, String firstName, String lastName,
+      String phone, String email, bool isEmergency) async {
     try {
       // Check if user is an emergency contact
       DocumentSnapshot contactDoc = await FirebaseFirestore.instance
@@ -106,7 +109,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'firstName': firstName,
           'lastName': lastName,
           'phone': phone,
-          'email':email,
+          'email': email,
           'isEmergency': isEmergency,
         });
 
@@ -178,7 +181,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   //     print("Error checking emergency contact linkage: \$e");
   //   }
   // }
-  Future<void> checkAndLinkEmergencyContact(User user, String userId, String phone) async {
+  Future<void> checkAndLinkEmergencyContact(
+      User user, String userId, String phone) async {
     try {
       final contactDoc = await FirebaseFirestore.instance
           .collection('emergencyContacts')
@@ -201,7 +205,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       print("Link error: $e");
     }
   }
-  Future<void> _linkEmergencyToPatientData(String patientId, String emergencyContactId) async {
+
+  Future<void> _linkEmergencyToPatientData(
+      String patientId, String emergencyContactId) async {
     final collections = ['meds', 'appointments', 'doctors'];
 
     for (String collection in collections) {
@@ -217,7 +223,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +245,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               color: Colors.blue.shade900,
                               fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
-                  Image.asset('images/MedTrack -logo.png', width: 150, height: 150),
+                  Image.asset('images/MedTrack -logo.png',
+                      width: 150, height: 150),
                   const SizedBox(height: 20),
                   _buildTextFormField(
                     firstNameController,

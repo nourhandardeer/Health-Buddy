@@ -1,4 +1,4 @@
-# health_buddy
+# medtrack
 
 A new Flutter project.
 

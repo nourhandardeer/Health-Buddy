@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:health_buddy/NavigationBar/manage_page.dart';
+import 'package:medtrack/NavigationBar/manage_page.dart';
 import 'package:intl/intl.dart';
-import 'package:health_buddy/home.dart';
+import 'package:medtrack/home.dart';
 import '../services/notification_service.dart';
 
 import '../services/firestore_service.dart';
@@ -128,6 +128,7 @@ class _AddAppointmentState extends State<AddAppointment> {
         ttsMessage:
             'Reminder! Appointment with Dr. ${doctorNameController.text} at ${selectedTime!.format(context)}.',
       );
+      print('Appointment Notification scheduled for $reminderTime');
 
       Navigator.pop(context);
     } catch (e) {
