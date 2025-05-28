@@ -104,16 +104,21 @@ class Auth {
         final DateTime scheduledTime = _parseTime(data['reminderTime1']);
 
         if (scheduledTime.isAfter(DateTime.now())) {
-          await NotificationService.scheduleNotification(
-            id: doc.hashCode,
+          await NotificationService.scheduleRepeatedNotification(
+            baseId: doc.hashCode.toString(),
             title: "Medication Reminder",
             bodyEn: "Time to take ${data['dosage']} ${data['unit']} of ${data['name']}",
             bodyAr: "حان وقت تناول ${data['dosage']} ${data['unit']} من ${data['name']}",
-            scheduledTime: scheduledTime,
+            startTime: scheduledTime,
             ttsMessageEn:
             "It is time to take your medicine. Please take ${data['dosage']} ${data['unit']} of ${data['name']}.",
             ttsMessageAr:
               "حان وقت تناول دوائك: الرجاء تناول ${data['dosage']} ${data['unit']} من ${data['name']}.",
+            repeatCount: 24,
+          interval: const Duration(minutes: 15),
+          dosage: data['dosage'],
+          unit: data['unit'],
+          medName: data['name'],
           );
         }
       }
