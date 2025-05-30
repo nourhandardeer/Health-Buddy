@@ -12,6 +12,7 @@ import 'ChangePasswordPage.dart';
 import 'SetPinPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:medtrack/auth.dart';
+import 'package:medtrack/pages/HelpPage.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -215,6 +216,20 @@ class _SettingsPageState extends State<SettingsPage> {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => SplashScreen()),
+              );
+            },
+          ),
+          Divider(),
+
+          ListTile(
+            leading: Icon(Icons.help_outline, color: Colors.teal),
+            title: Text('Help'),
+            subtitle: Text('Watch tutorial videos'),
+            trailing: Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => HelpPage()),
               );
             },
           ),

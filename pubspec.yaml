@@ -72,6 +72,12 @@ flutter:
     - images/MedTrack -logo.png
     - images/MedTrack -name.png
     - images/MedTrack-icon.png
+    - videos/addAppointment.mp4
+    - videos/addDoctor.mp4
+    - videos/addEmergencyContact.mp4
+    - videos/addMed.mp4
+    - videos/requestPharmacy.mp4
+
   fonts:
     - family: PlayfairDisplay
       fonts:
